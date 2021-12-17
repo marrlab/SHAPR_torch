@@ -69,15 +69,13 @@ For running the code, you need to have Python 3.6 or higher installed. In additi
 - h5py: 2.10.0
 - hdf5: 1.10.6
 - imageio: 2.9.0
-- keras: 2.4.3
 - matplotlib: 3.3.4
 - numpy: 1.20.3
 - python: 3.6.7
 - scikit-image: 0.18.1
 - scikit-learn: 0.24.1
 - scipy: 1.6.2
-- tensorflow: 2.4.1
-- tensorflow-gpu: 2.4.1 # in case of GPU existance
+- pytorch
 ```
 
 

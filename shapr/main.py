@@ -139,7 +139,7 @@ def run_train(amp: bool = False):
         for epoch in range(settings.epochs_cSHAPR):
             netSHAPR.train()
             epoch_loss = 0
-            with tqdm(total=n_train, desc=f'Epoch {epoch + 1}/{settings.epochs_SHAPR}', unit='img') as pbar:
+            with tqdm(total=n_train, desc=f'Epoch {epoch + 1}/{settings.epochs_cSHAPR}', unit='img') as pbar:
                 for batch in train_loader:
                     images = batch['image']
                     true_obj = batch['obj']
@@ -223,9 +223,9 @@ def run_train(amp: bool = False):
             """
             The predictions on the test set for each fold will be saved to the results folder
             """
-            prediction = output * 255
             os.makedirs(settings.result_path, exist_ok=True)
-            imsave(os.path.join(settings.result_path, test_file), prediction.astype("uint8"))
+            prediction = output.cpu().detach().numpy()
+            imsave(os.path.join(settings.result_path, test_file), (255*prediction).astype("uint8"))
 
 
 def run_evaluation(): 
