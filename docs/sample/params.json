@@ -1,0 +1,8 @@
+{
+    "path": "./docs/sample/",
+    "result_path": "./docs/sample/Results/",
+    "random_seed" : 0,
+    "batch_size": 6,
+    "epochs_SHAPR": 30,
+    "epochs_cSHAPR": 30
+}

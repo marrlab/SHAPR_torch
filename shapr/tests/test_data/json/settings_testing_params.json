@@ -1,0 +1,9 @@
+{
+    "path": "path1_json",
+    "result_path": "path2_json",
+    "pretrained_weights_path": "path3_json",
+    "random_seed" : 21,
+    "batch_size": 5,
+    "epochs_ShapeAE": 50,
+    "epochs_cShapeAE": 500
+}

@@ -1,0 +1,8 @@
+{
+    "path": "/home/dominik/Documents/SHAPR_pytorch/docs/sample/",
+    "result_path": "/home/dominik/Documents/SHAPR_pytorch/docs/sample/results/",
+    "random_seed" : 0,
+    "batch_size": 6,
+    "epochs_SHAPR": 1,
+    "epochs_cSHAPR": 0
+}

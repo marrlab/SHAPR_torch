@@ -1,0 +1,8 @@
+{
+    "path": "/media/dominik/LaCie/ShapeAE/Blood_cell/",
+    "result_path": "/media/dominik/LaCie/ShapeAE/Blood_cell/Results_new_package/",
+    "random_seed" : 0,
+    "batch_size": 6,
+    "epochs_ShapeAE": 2,
+    "epochs_cShapeAE": 4
+}
