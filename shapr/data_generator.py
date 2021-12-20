@@ -5,6 +5,7 @@ from shapr.metrics import *
 from torch.utils.data import Dataset
 import pytorch_lightning as pl
 from torchvision import transforms
+from torch.utils.data import DataLoader, random_split
 
 def augmentation(obj, img):
     random.seed(settings.random_seed)
@@ -39,7 +40,6 @@ def augmentation(obj, img):
         img = img[int(x_shift/4):-int(x_shift2/4+1), int(y_shift/4):-int(y_shift2/4+1),:]
         obj = resize(obj, obj_shape, preserve_range=True)
         img = resize(img, img_shape, preserve_range=True)
-
     return obj, img
 
 
@@ -50,7 +50,7 @@ The 2D mask and the 2D image will be multiplied pixel-wise to remove the backgro
 """
 
 class SHAPRDataset(Dataset):
-    def __init__(self, path, filenames, transform=None, target_transform=None):
+    def __init__(self, path, filenames):
         self.path = path
         self.filenames = filenames
 
@@ -68,10 +68,11 @@ class SHAPRDataset(Dataset):
         #msk_bf[1, 0, :, :] = bf * img
         msk_bf[0, :, :] = img
         msk_bf[1, :, :] = bf * img
-        obj, mask_bf = augmentation(obj, msk_bf)
+        #obj, mask_bf = augmentation(obj, msk_bf)
         mask_bf = msk_bf[:, np.newaxis, ...]
         obj = obj[np.newaxis,:,:,:]
         return torch.from_numpy(mask_bf).float(), torch.from_numpy(obj).float()
+
 
 def get_test_image(self, filename):
     img = import_image(os.path.join(self.path, "mask", filename)) / 255.
