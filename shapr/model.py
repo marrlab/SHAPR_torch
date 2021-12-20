@@ -170,13 +170,13 @@ class Discriminator(nn.Module):
         n_filters = 10
         self.conv1 = EncoderBlock(1, n_filters)
         self.down1 = Down222()
-        self.conv2 = EncoderBlock(n_filters, n_filters)
+        self.conv2 = EncoderBlock(n_filters, n_filters*2)
         self.down2 = Down222()
-        self.conv3 = EncoderBlock(n_filters, n_filters)
+        self.conv3 = EncoderBlock(n_filters*2, n_filters*4)
         self.down3 = Down222()
-        self.conv4 = EncoderBlock(n_filters, n_filters)
+        self.conv4 = EncoderBlock(n_filters*4, n_filters*8)
         self.down4 = Down222()
-        self.conv5 = EncoderBlock(n_filters, n_filters)
+        self.conv5 = EncoderBlock(n_filters*8, n_filters*16)
         self.discout = DiscriminatorOut(n_filters, 1)
 
     def forward(self, x_in):

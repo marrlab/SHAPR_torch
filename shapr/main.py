@@ -7,7 +7,8 @@ from tqdm import tqdm
 from torch.utils.data import DataLoader, random_split
 from evaluate import evaluate
 from pathlib import Path
-
+import wandb
+import logging
 
 PARAMS = {"num_filters": 10,
       "dropout": 0.
@@ -56,20 +57,25 @@ def run_train(amp: bool = False):
         These weights will be used for all folds
         """
 
-        lr = 0.0002
+        lr = 0.01 # 0.0002
         beta1 = 0.5
         optimizerSHAPR = optim.Adam(netSHAPR.parameters(), lr=lr, betas=(beta1, 0.999))
         optimizerDisc = optim.Adam(netDiscriminator.parameters(), lr=lr, betas=(beta1, 0.999))
 
-        criterionSHAPR = nn.BCELoss()
+        criterionSHAPR = nn.MSELoss()
         criterionDisc = nn.BCELoss()
         grad_scaler = torch.cuda.amp.GradScaler(enabled=amp)
-        scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizerSHAPR, 'max', patience=2)  # goal: maximize Dice score
+        scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizerSHAPR, 'max', patience=4)  # goal: maximize Dice score
 
         loader_args = dict(batch_size=settings.batch_size, num_workers=4, pin_memory=True)
         train_loader = DataLoader(train_set, shuffle=True, **loader_args)
         val_loader = DataLoader(val_set, shuffle=False, drop_last=True, **loader_args)
         global_step = 0
+
+        experiment = wandb.init(project='U-Net', resume='allow', anonymous='must')
+        experiment.config.update(dict(epochs=settings.epochs_SHAPR, batch_size=settings.batch_size, learning_rate=lr,
+                                      val_percent=0.2, save_checkpoint=True, amp=amp))
+
         for epoch in range(settings.epochs_SHAPR):
             netSHAPR.train()
             epoch_loss = 0
@@ -92,27 +98,26 @@ def run_train(amp: bool = False):
                     pbar.update(images.shape[0])
                     global_step += 1
                     epoch_loss += loss.item()
-                    #experiment.log({
-                    #    'train loss': loss.item(),
-                    #    'step': global_step,
-                    #    'epoch': epoch
-                    #})
-                    #pbar.set_postfix(**{'loss (batch)': loss.item()})
-
+                    experiment.log({
+                        'train loss': loss.item(),
+                        'step': global_step,
+                        'epoch': epoch
+                    })
+                    pbar.set_postfix(**{'loss (batch)': loss.item()})
                     # Evaluation round
                     division_step = (n_train // (10 * settings.batch_size))
                     if division_step > 0:
                         if global_step % division_step == 0:
                             #histograms = {}
                             #for tag, value in netSHAPR.named_parameters():
-                            #    tag = tag.replace('/', '.')
-                            #    histograms['Weights/' + tag] = wandb.Histogram(value.data.cpu())
-                            #    histograms['Gradients/' + tag] = wandb.Histogram(value.grad.data.cpu())
+                                #tag = tag.replace('/', '.')
+                                #histograms['Weights/' + tag] = wandb.Histogram(value.data.cpu())
+                                #histograms['Gradients/' + tag] = wandb.Histogram(value.grad.data.cpu())
 
                             val_score = evaluate(netSHAPR, val_loader, device)
                             scheduler.step(val_score)
-
-                            #logging.info('Validation Dice score: {}'.format(val_score))
+                            print("Validation Dice score", val_score)
+                            logging.info('Validation Dice score: {}'.format(val_score))
                             #experiment.log({
                             #    'learning rate': optimizer.param_groups[0]['lr'],
                             #    'validation Dice': val_score,
@@ -197,35 +202,33 @@ def run_train(amp: bool = False):
                     division_step = (n_train // (10 * settings.batch_size))
                     if division_step > 0:
                         if global_step % division_step == 0:
-                            # histograms = {}
-                            # for tag, value in netSHAPR.named_parameters():
-                            #    tag = tag.replace('/', '.')
-                            #    histograms['Weights/' + tag] = wandb.Histogram(value.data.cpu())
-                            #    histograms['Gradients/' + tag] = wandb.Histogram(value.grad.data.cpu())
-
+                            histograms = {}
+                            #for tag, value in netSHAPR.named_parameters():
+                                #tag = tag.replace('/', '.')
+                                #histograms['Weights/' + tag] = wandb.Histogram(value.data.cpu())
+                                #histograms['Gradients/' + tag] = wandb.Histogram(value.grad.data.cpu())
                             val_score = evaluate(netSHAPR, val_loader, device)
+                            print("Validation Dice score", val_score)
                             scheduler.step(val_score)
+                            logging.info('Validation Dice score: {}'.format(val_score))
             Path(settings.path + "/logs/").mkdir(parents=True, exist_ok=True)
             torch.save(netSHAPR.state_dict(), str(settings.path + "/logs/" + 'Adverserial_model_checkpoint_epoch{}.pth'.format(epoch + 1)))
 
         """
         The 3D shape of the test data for each fold will be predicted here
         """
-        for test_file in cv_test_filenames:
-            image = torch.from_numpy(get_test_image(settings, test_file))
-
+        with torch.no_grad():
             netSHAPR.eval()
-            img = image.to(device=device, dtype=torch.float32)
-
-            with torch.no_grad():
+            for test_file in cv_test_filenames:
+                image = torch.from_numpy(get_test_image(settings, test_file))
+                img = image.to(device=device, dtype=torch.float32)
                 output = netSHAPR(img)
-
-            """
-            The predictions on the test set for each fold will be saved to the results folder
-            """
-            os.makedirs(settings.result_path, exist_ok=True)
-            prediction = output.cpu().detach().numpy()
-            imsave(os.path.join(settings.result_path, test_file), (255*prediction).astype("uint8"))
+                """
+                The predictions on the test set for each fold will be saved to the results folder
+                """
+                os.makedirs(settings.result_path, exist_ok=True)
+                prediction = output.cpu().detach().numpy()
+                imsave(os.path.join(settings.result_path, test_file), (255*prediction).astype("uint8"))
 
 
 def run_evaluation(): 

@@ -65,7 +65,6 @@ class SHAPRDataset(Dataset):
         mask_bf[0, 0, :, :] = img
         mask_bf[1, 0, :, :] = bf * img
         obj = obj[np.newaxis,:,:,:]
-
         return {
             'image': torch.as_tensor(mask_bf.copy()).float().contiguous(),
             'obj': torch.as_tensor(obj.copy()).long().contiguous()
