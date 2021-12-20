@@ -61,9 +61,14 @@ class SHAPRDataset(Dataset):
         obj = import_image(os.path.join(self.path, "obj", self.filenames[idx])) / 255.
         img = import_image(os.path.join(self.path, "mask", self.filenames[idx])) / 255.
         bf = import_image(os.path.join(self.path, "image", self.filenames[idx])) / 255.
-        mask_bf = np.zeros((2, 1, int(np.shape(img)[0]), int(np.shape(img)[1])))
-        mask_bf[0, 0, :, :] = img
-        mask_bf[1, 0, :, :] = bf * img
+        #mask_bf = np.zeros((2, 1, int(np.shape(img)[0]), int(np.shape(img)[1])))
+        msk_bf = np.zeros((2, int(np.shape(img)[0]), int(np.shape(img)[1])))
+        #msk_bf[0, 0, :, :] = img
+        #msk_bf[1, 0, :, :] = bf * img
+        msk_bf[0, :, :] = img
+        msk_bf[1, :, :] = bf * img
+        obj, mask_bf = augmentation(obj, msk_bf)
+        mask_bf = msk_bf[:, np.newaxis, ...]
         obj = obj[np.newaxis,:,:,:]
         return {
             'image': torch.as_tensor(mask_bf.copy()).float().contiguous(),
