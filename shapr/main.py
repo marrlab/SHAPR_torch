@@ -1,5 +1,5 @@
 from shapr.utils import *
-from shapr import settings
+from shapr._settings import settings
 from shapr.data_generator import *
 #from shapr.model import netSHAPR, netDiscriminator
 import torch.optim as optim
@@ -14,6 +14,7 @@ from model import SHAPR, LightningSHAPRoptimization, LightningSHAPR_GANoptimizat
 from data_generator import SHAPRDataset
 from sklearn.model_selection import train_test_split
 from pytorch_lightning.callbacks import ModelCheckpoint, EarlyStopping
+import glob
 
 PARAMS = {"num_filters": 10,
       "dropout": 0.
@@ -48,14 +49,14 @@ def run_train(amp: bool = False):
         cv_test_filenames = [str(filenames[i]) for i in cv_test_indices]
 
         """
-            From the train set we use 20% of the files as validation during training 
+        From the train set we use 20% of the files as validation during training 
         """
         cv_train_filenames, cv_val_filenames = train_test_split(cv_train_filenames, test_size=0.2)
 
         checkpoint_callback = ModelCheckpoint(
             monitor="val_loss",
-            dirpath=settings.path,
-            filename="/logs/SHAPR_training-{epoch:02d}-{val_loss:.2f}",
+            dirpath=os.path.join(settings.path, "logs"),
+            filename="SHAPR_training-{epoch:02d}-{val_loss:.2f}",
             save_top_k=3,
             mode="min",
         )
@@ -71,14 +72,21 @@ def run_train(amp: bool = False):
         early_stopping_callback = EarlyStopping(monitor='val_loss', patience=2)
         checkpoint_callback = ModelCheckpoint(
             monitor="val_loss",
-            dirpath=settings.path,
+            dirpath=os.path.join(settings.path, "logs"),
             verbose=True,
-            filename="/logs/SHAPR_GAN_training-{epoch:02d}-{val_loss:.2f}",
+            filename="SHAPR_GAN_training-{epoch:02d}-{val_loss:.2f}",
             save_top_k=3,
             mode="min",
         )
 
         SHAPR_GANmodel = LightningSHAPR_GANoptimization(settings, cv_train_filenames, cv_val_filenames)
+        files = [f for f in os.listdir(settings.path + "logs/") if "SHAPR_training" in f]
+        print("list_of_files", files)
+        list_of_files = [settings.path + "logs/" + f for f in files]
+        print("list_of_files", list_of_files)
+
+        # ToDo: load SHAPR model from pre-training without discriminator
+        #SHAPR_GANmodel.load_from_checkpoint(os.path.join(settings.path, "logs", max(list_of_files, key=os.path.getctime)))
         SHAPR_GAN_trainer = pl.Trainer(callbacks=[early_stopping_callback, checkpoint_callback], max_epochs=settings.epochs_cSHAPR)
         SHAPR_GAN_trainer.fit(model=SHAPR_GANmodel)
 

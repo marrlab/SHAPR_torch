@@ -7,6 +7,7 @@ from torch.utils.data import DataLoader, random_split
 #from .metrics import *
 import torchvision
 from collections import OrderedDict
+import os
 
 class EncoderBlock(nn.Module):
     """(convolution => [BN] => ReLU) * 2"""
@@ -304,9 +305,6 @@ class LightningSHAPR_GANoptimization(pl.LightningModule):
         self.batch_size = settings.batch_size
         # Define model
         self.shapr = SHAPR()
-        list_of_files = [f for f in os.listdir(settings.path + "/logs/") if "SHAPR_training" in f]
-        max(list_of_files, key=os.path.getctime)
-        self.shapr.load_from_checkpoint(settings.path + "/logs/")
         self.discriminator = Discriminator()
         # Define learning rate
         self.lr = 0.01
@@ -331,6 +329,8 @@ class LightningSHAPR_GANoptimization(pl.LightningModule):
         return val_loader
 
     def training_step(self, batch, batch_idx, optimizer_idx):
+        #ToDo: Add training of SHAPR with classical losses in supervised fashion, as in the tensorflow implementation
+        #ToDo: Add training with correct loss fuctions
         imgs, obj_true = batch
 
         # train generator
@@ -364,12 +364,23 @@ class LightningSHAPR_GANoptimization(pl.LightningModule):
             fake = fake.type_as(imgs)
 
             fake_loss = self.adversarial_loss(self.discriminator(self.generated_obj.detach()), fake)
-
+            #ToDo: Add useful logging
+            
             # discriminator loss is the average of these
             d_loss = (real_loss + fake_loss) / 2
             tqdm_dict = {"d_loss": d_loss}
             output = OrderedDict({"loss": d_loss, "progress_bar": tqdm_dict, "log": tqdm_dict})
             return output
+
+    def MSEloss(self, y_true, y_pred):
+        MSE = torch.nn.MSELoss()
+        return MSE(y_true, y_pred)
+
+    def validation_step(self, val_batch, batch_idx):
+        images, true_obj = val_batch
+        pred = self.forward(images)
+        loss = self.MSEloss(true_obj, pred)
+        self.log("val_loss", loss)
 
     def configure_optimizers(self):
         lr_1 = 0.01
@@ -383,10 +394,9 @@ class LightningSHAPR_GANoptimization(pl.LightningModule):
         opt_d = torch.optim.Adam(self.parameters(), lr=lr_2, betas=(b1_2, b2_2))
         return [opt_g, opt_d], []
 
-    def on_epoch_end(self):
-        z = self.validation_z.type_as(self.shapr.model[0].weight)
-
+    #def on_epoch_end(self):
+    #    z = self.validation_z.type_as(self.shapr.model[0].weight)
         # log sampled images
-        sample_imgs = self(z)
-        grid = torchvision.utils.make_grid(sample_imgs)
-        self.logger.experiment.add_image("generated_images", grid, self.current_epoch)
+    #    sample_imgs = self(z)
+    #    grid = torchvision.utils.make_grid(sample_imgs)
+    #    self.logger.experiment.add_image("generated_images", grid, self.current_epoch)
