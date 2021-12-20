@@ -1,10 +1,10 @@
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-
-from .metrics import *
-
-
+import pytorch_lightning as pl
+from data_generator import SHAPRDataset
+from torch.utils.data import DataLoader, random_split
+#from .metrics import *
 
 class EncoderBlock(nn.Module):
     """(convolution => [BN] => ReLU) * 2"""
@@ -142,6 +142,7 @@ class SHAPR(nn.Module):
         self.conv10 = EncoderBlock(n_filters, n_filters)
         self.decout = DecoderOut(n_filters, 1)
 
+
     def forward(self, x_in):
         x = self.conv1(x_in)
         x = self.down1(x)
@@ -210,3 +211,72 @@ print(netSHAPR)
 netDiscriminator = Discriminator().to(device)
 netDiscriminator.apply(weights_init)
 print(netDiscriminator)
+
+
+class LightningSHAPRoptimiziation(pl.LightningModule):
+    def __init__(self):
+        super.__init__()
+        n_filters = 10
+        self.conv1 = EncoderBlock(2, n_filters)
+        self.down1 = Down122()
+        self.conv2 = EncoderBlock(n_filters, n_filters*2)
+        self.down2 = Down122()
+        self.conv3 = EncoderBlock(n_filters*2, n_filters*4)
+        self.encout = EncoderOut(n_filters*4, n_filters*8)
+        self.conv4 = EncoderBlock(n_filters*8, n_filters*8)
+        self.up4 = Up211(n_filters*8, n_filters*8)
+        self.conv5 = EncoderBlock(n_filters*8, n_filters*8)
+        self.up5 = Up211(n_filters*8, n_filters*8)
+        self.conv6 = EncoderBlock(n_filters*8, n_filters*4)
+        self.up6 = Up222(n_filters*4, n_filters*4)
+        self.conv7 = EncoderBlock(n_filters*4, n_filters*4)
+        self.up7 = Up211(n_filters*4, n_filters*4)
+        self.conv8 = EncoderBlock(n_filters*4, n_filters*2)
+        self.up8 = Up211(n_filters*2, n_filters*2)
+        self.conv9 = EncoderBlock(n_filters*2, n_filters)
+        self.up9 = Up222(n_filters, n_filters)
+        self.conv10 = EncoderBlock(n_filters, n_filters)
+        self.decout = DecoderOut(n_filters, 1)
+
+    def forward(self, x_in):
+        x = self.conv1(x_in)
+        x = self.down1(x)
+        x = self.conv2(x)
+        x = self.down2(x)
+        x = self.conv3(x)
+        x_enc = self.encout(x)
+        x = self.conv4(x_enc)
+        x = self.up4(x)
+        x = self.conv5(x)
+        x = self.up5(x)
+        x = self.conv6(x)
+        x = self.up6(x)
+        x = self.conv7(x)
+        x = self.up7(x)
+        x = self.conv8(x)
+        x = self.up8(x)
+        x = self.conv9(x)
+        x = self.up9(x)
+        x_dec = self.decout(x)
+        return x_dec
+
+    def configure_optimizers(self):
+        params = [SHAPR.parameters(), Discriminator.parameters()]
+        optimizer = torch.optim.Adam(params, lr=1e-3)
+        return optimizer
+
+    def MSEloss(self, y_true, y_pred):
+        MSE = torch.nn.MSELoss()
+        return MSE(y_true, y_pred)
+
+    def training_step(self, images, true_obj):
+        pred = self.forward(images)
+        loss = self.MSEloss(true_obj, pred)
+        self.log("train loss", loss)
+        return loss
+
+    def validation_step(self, images, true_obj):
+        pred = self.forward(images)
+        loss = self.MSEloss(true_obj, pred)
+        self.log("validation loss", loss)
+

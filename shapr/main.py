@@ -9,6 +9,9 @@ from evaluate import evaluate
 from pathlib import Path
 import wandb
 import logging
+import pytorch_lightning as pl
+from model import SHAPR
+from data_generator import SHAPRDataset
 
 PARAMS = {"num_filters": 10,
       "dropout": 0.
@@ -76,7 +79,9 @@ def run_train(amp: bool = False):
         experiment.config.update(dict(epochs=settings.epochs_SHAPR, batch_size=settings.batch_size, learning_rate=lr,
                                       val_percent=0.2, save_checkpoint=True, amp=amp))
 
-        for epoch in range(settings.epochs_SHAPR):
+        SHAPR_trainer = pl.Trainer()
+        SHAPR_trainer.fit(model= SHAPR, train_dataloader=train_loader, val_dataloaders=val_loader)
+        '''for epoch in range(settings.epochs_SHAPR):
             netSHAPR.train()
             epoch_loss = 0
             with tqdm(total=n_train, desc=f'Epoch {epoch + 1}/{settings.epochs_SHAPR}', unit='img') as pbar:
@@ -88,7 +93,7 @@ def run_train(amp: bool = False):
 
                     with torch.cuda.amp.autocast(enabled=amp):
                         obj_pred = netSHAPR(images)
-                        loss = criterionSHAPR(obj_pred, true_obj)
+                        loss = self.MSEloss(obj_pred, true_obj)
 
                     optimizerSHAPR.zero_grad(set_to_none=True)
                     grad_scaler.scale(loss).backward()
@@ -133,7 +138,7 @@ def run_train(amp: bool = False):
                             #})
             Path(settings.path+ "/logs/").mkdir(parents=True, exist_ok=True)
             torch.save(netSHAPR.state_dict(), str(settings.path+ "/logs/" + 'checkpoint_epoch{}.pth'.format(epoch + 1)))
-            #logging.info(f'Checkpoint {epoch + 1} saved!')
+            #logging.info(f'Checkpoint {epoch + 1} saved!')'''
 
         """
         After training SHAPR for the set number of epochs, we train the adverserial model

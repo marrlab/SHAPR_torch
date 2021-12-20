@@ -1,9 +1,10 @@
 import numpy as np
-
-from ._settings import settings
-from .utils import *
-from .metrics import *
+from shapr._settings import settings
+from shapr.utils import *
+from shapr.metrics import *
 from torch.utils.data import Dataset
+import pytorch_lightning as pl
+from torchvision import transforms
 
 def augmentation(obj, img):
     random.seed(settings.random_seed)
@@ -70,10 +71,7 @@ class SHAPRDataset(Dataset):
         obj, mask_bf = augmentation(obj, msk_bf)
         mask_bf = msk_bf[:, np.newaxis, ...]
         obj = obj[np.newaxis,:,:,:]
-        return {
-            'image': torch.as_tensor(mask_bf.copy()).float().contiguous(),
-            'obj': torch.as_tensor(obj.copy()).long().contiguous()
-        }
+        return torch.from_numpy(mask_bf).float(), torch.from_numpy(obj).float()
 
 def get_test_image(self, filename):
     img = import_image(os.path.join(self.path, "mask", filename)) / 255.
@@ -85,18 +83,3 @@ def get_test_image(self, filename):
     return mask_bf
 
 
-
-"""
-The test data generator will open the 2D masks and 2D images for each fold from the directory given the filenames and return a tensor
-"""
-def data_generator_test_set(path, filenames):
-    while True:
-        for test_file in filenames:
-            if not test_file.startswith('.'):
-                img = import_image(os.path.join(path, "mask", test_file)) / 255.
-                bf = import_image(os.path.join(path, "image", test_file)) /255.
-                img_out_2 = np.zeros((int(np.shape(img)[0]), int(np.shape(img)[1]), 2))
-                img_out_2[:, :, 0] = img
-                img_out_2[:, :, 1] = bf * img
-                img_out_2 = img_out_2[np.newaxis, np.newaxis, ...]
-                yield img_out_2
