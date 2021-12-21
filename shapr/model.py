@@ -4,10 +4,11 @@ import torch.nn.functional as F
 import pytorch_lightning as pl
 from data_generator import SHAPRDataset
 from torch.utils.data import DataLoader, random_split
-#from .metrics import *
+#from .metrics import DiceLoss
 import torchvision
 from collections import OrderedDict
 import os
+
 
 class EncoderBlock(nn.Module):
     """(convolution => [BN] => ReLU) * 2"""
@@ -271,17 +272,22 @@ class LightningSHAPRoptimization(pl.LightningModule):
         MSE = torch.nn.MSELoss()
         return MSE(y_true, y_pred)
 
+    def binary_crossentropy_Dice(self, y_pred, y_true):
+        cross_entropy_loss = nn.CrossEntropyLoss()
+        #ToDo replace MSE with dice loss
+        return self.MSEloss(y_pred, y_true) + cross_entropy_loss(y_pred, y_true)
+
     def training_step(self, train_batch, batch_idx):
         images, true_obj = train_batch
         pred = self.forward(images)
-        loss = self.MSEloss(true_obj, pred)
+        loss = self.binary_crossentropy_Dice(true_obj, pred)
         self.log("train_loss", loss)
         return loss
 
     def validation_step(self, val_batch, batch_idx):
         images, true_obj = val_batch
         pred = self.forward(images)
-        loss = self.MSEloss(true_obj, pred)
+        loss = self.binary_crossentropy_Dice(true_obj, pred)
         self.log("val_loss", loss)
 
     def train_dataloader(self):
@@ -293,6 +299,11 @@ class LightningSHAPRoptimization(pl.LightningModule):
         dataset = SHAPRDataset(self.path, self.cv_val_filenames)
         val_loader = DataLoader(dataset, batch_size=self.batch_size, pin_memory=True, shuffle=True)
         return val_loader
+
+    def test_dataloader(self):
+        dataset = SHAPRDataset(self.path, self.cv_test_filenames)
+        test_loader = DataLoader(dataset)
+        return test_loader
 
 # Define GAN
 class LightningSHAPR_GANoptimization(pl.LightningModule):
@@ -318,6 +329,15 @@ class LightningSHAPR_GANoptimization(pl.LightningModule):
     def adversarial_loss(self, y_hat, y):
         return F.binary_cross_entropy(y_hat, y)
 
+    def MSEloss(self, y_true, y_pred):
+        MSE = torch.nn.MSELoss()
+        return MSE(y_true, y_pred)
+
+    def binary_crossentropy_Dice(self, y_pred, y_true):
+        cross_entropy_loss = nn.CrossEntropyLoss()
+        #ToDo replace MSE with dice loss
+        return self.MSEloss(y_pred, y_true) + cross_entropy_loss(y_pred, y_true)
+
     def train_dataloader(self):
         dataset = SHAPRDataset(self.path, self.cv_train_filenames)
         train_loader = DataLoader(dataset, batch_size=self.batch_size, pin_memory=True, shuffle=True)
@@ -328,75 +348,77 @@ class LightningSHAPR_GANoptimization(pl.LightningModule):
         val_loader = DataLoader(dataset, batch_size=self.batch_size, pin_memory=True, shuffle=True)
         return val_loader
 
-    def training_step(self, batch, batch_idx, optimizer_idx):
-        #ToDo: Add training of SHAPR with classical losses in supervised fashion, as in the tensorflow implementation
-        #ToDo: Add training with correct loss fuctions
-        imgs, obj_true = batch
+    def test_dataloader(self):
+        dataset = SHAPRDataset(self.path, self.cv_test_filenames)
+        test_loader = DataLoader(dataset)
+        return test_loader
+
+    def training_step(self, train_batch, batch_idx, optimizer_idx):
+        images, true_obj = train_batch
+        pred = self.forward(images)
+        #loss = self.binary_crossentropy_Dice(true_obj, pred)
+        #self.log("train_loss", loss)
+        #return loss
 
         # train generator
         if optimizer_idx == 0:
             # generate images
-            self.generated_obj = self(imgs)
 
             # ground truth result (ie: all fake)
             # put on GPU because we created this tensor inside training_loop
-            valid = torch.ones(imgs.size(0), 1)
-            valid = valid.type_as(imgs)
+            valid = torch.ones(images.size(0), 1)
+            valid = valid.type_as(images)
 
-            # adversarial loss is binary cross-entropy
-            g_loss = self.adversarial_loss(self.discriminator(self.generated_obj), valid)
-            tqdm_dict = {"g_loss": g_loss}
-            output = OrderedDict({"loss": g_loss, "progress_bar": tqdm_dict, "log": tqdm_dict})
-            return output
+            #train supervised
+            supervised_loss = self.binary_crossentropy_Dice(true_obj, pred)
+
+            # train with adversarial loss
+            g_loss = self.adversarial_loss(self.discriminator(pred), valid)
+
+            combined_loss = (supervised_loss + g_loss) / 2
+
+            self.log("SHAPR_adverserial_loss", g_loss)
+            self.log("SHAPR_supervised_loss", supervised_loss)
+            return combined_loss
 
         # train discriminator
         if optimizer_idx == 1:
             # Measure discriminator's ability to classify real from generated samples
 
             # how well can it label as real?
-            valid = torch.ones(imgs.size(0), 1)
-            valid = valid.type_as(imgs)
+            valid = torch.ones(images.size(0), 1)
+            valid = valid.type_as(images)
 
-            real_loss = self.adversarial_loss(self.discriminator(obj_true), valid)
+            real_loss = self.adversarial_loss(self.discriminator(true_obj), valid)
 
             # how well can it label as fake?
-            fake = torch.zeros(imgs.size(0), 1)
-            fake = fake.type_as(imgs)
+            fake = torch.zeros(images.size(0), 1)
+            fake = fake.type_as(images)
 
-            fake_loss = self.adversarial_loss(self.discriminator(self.generated_obj.detach()), fake)
+            fake_loss = self.adversarial_loss(self.discriminator(pred.detach()), fake)
             #ToDo: Add useful logging
-            
+
             # discriminator loss is the average of these
             d_loss = (real_loss + fake_loss) / 2
+            self.log("discriminator_loss", d_loss)
             tqdm_dict = {"d_loss": d_loss}
             output = OrderedDict({"loss": d_loss, "progress_bar": tqdm_dict, "log": tqdm_dict})
-            return output
-
-    def MSEloss(self, y_true, y_pred):
-        MSE = torch.nn.MSELoss()
-        return MSE(y_true, y_pred)
+            return d_loss
 
     def validation_step(self, val_batch, batch_idx):
         images, true_obj = val_batch
         pred = self.forward(images)
-        loss = self.MSEloss(true_obj, pred)
+        loss = self.binary_crossentropy_Dice(true_obj, pred)
         self.log("val_loss", loss)
 
     def configure_optimizers(self):
-        lr_1 = 0.01
+        lr_1 = 0.1
         b1_1 = 0.5
         b2_1 = 0.999
-        lr_2 = 0.01
+        lr_2 = 0.1
         b1_2 = 0.5
         b2_2 = 0.999
 
         opt_g = torch.optim.Adam(self.parameters(), lr=lr_1, betas=(b1_1, b2_1))
         opt_d = torch.optim.Adam(self.parameters(), lr=lr_2, betas=(b1_2, b2_2))
         return [opt_g, opt_d], []
-
-    #def on_epoch_end(self):
-    #    z = self.validation_z.type_as(self.shapr.model[0].weight)
-        # log sampled images
-    #    sample_imgs = self(z)
-    #    grid = torchvision.utils.make_grid(sample_imgs)
-    #    self.logger.experiment.add_image("generated_images", grid, self.current_epoch)

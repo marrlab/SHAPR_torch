@@ -60,16 +60,16 @@ def run_train(amp: bool = False):
             save_top_k=3,
             mode="min",
         )
-
+        early_stopping_callback = EarlyStopping(monitor='val_loss', patience=5)
         SHAPRmodel = LightningSHAPRoptimization(settings, cv_train_filenames, cv_val_filenames)
-        SHAPR_trainer = pl.Trainer(max_epochs=settings.epochs_SHAPR, callbacks=[checkpoint_callback])
+        SHAPR_trainer = pl.Trainer(max_epochs=settings.epochs_SHAPR, callbacks=[checkpoint_callback, early_stopping_callback])
         SHAPR_trainer.fit(model= SHAPRmodel)
 
 
         """
         After training SHAPR for the set number of epochs, we train the adverserial model
         """
-        early_stopping_callback = EarlyStopping(monitor='val_loss', patience=2)
+        early_stopping_callback = EarlyStopping(monitor='val_loss', patience=5)
         checkpoint_callback = ModelCheckpoint(
             monitor="val_loss",
             dirpath=os.path.join(settings.path, "logs"),
@@ -81,9 +81,7 @@ def run_train(amp: bool = False):
 
         SHAPR_GANmodel = LightningSHAPR_GANoptimization(settings, cv_train_filenames, cv_val_filenames)
         files = [f for f in os.listdir(settings.path + "logs/") if "SHAPR_training" in f]
-        print("list_of_files", files)
         list_of_files = [settings.path + "logs/" + f for f in files]
-        print("list_of_files", list_of_files)
 
         # ToDo: load SHAPR model from pre-training without discriminator
         #SHAPR_GANmodel.load_from_checkpoint(os.path.join(settings.path, "logs", max(list_of_files, key=os.path.getctime)))
@@ -93,11 +91,29 @@ def run_train(amp: bool = False):
         """
         The 3D shape of the test data for each fold will be predicted here
         """
-        #result = SHAPR_GAN_trainer.test()
+        if settings.epochs_SHAPR > 0:
+            with torch.no_grad():
+                SHAPRmodel.eval()
+                for test_file in cv_test_filenames:
+                    image = torch.from_numpy(get_test_image(settings, test_file))
+                    img = image.to(device=device, dtype=torch.float32)
+                    output = SHAPR_GANmodel(img)
+                    os.makedirs(settings.result_path, exist_ok=True)
+                    prediction = output.cpu().detach().numpy()
+                    imsave(os.path.join(settings.result_path, test_file), (255 * prediction).astype("uint8"))
+        else:
+            with torch.no_grad():
+                SHAPR_GANmodel.eval()
+                for test_file in cv_test_filenames:
+                    image = torch.from_numpy(get_test_image(settings, test_file))
+                    img = image.to(device=device, dtype=torch.float32)
+                    output = SHAPR_GANmodel(img)
+                    os.makedirs(settings.result_path, exist_ok=True)
+                    prediction = output.cpu().detach().numpy()
+                    imsave(os.path.join(settings.result_path, test_file), (255 * prediction).astype("uint8"))
 
 
-
-def run_evaluation(): 
+def run_evaluation():
 
     print(settings)
 
