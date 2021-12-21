@@ -115,7 +115,7 @@ class DiscriminatorOut(nn.Module):
             nn.Sigmoid(),
             nn.Flatten(),
             nn.Linear(64, 1),
-            nn.LogSoftmax(dim=1)
+            nn.Sigmoid()
         )
     def forward(self, x):
         return self.disc_out(x)
@@ -175,14 +175,14 @@ class Discriminator(nn.Module):
         n_filters = 10
         self.conv1 = EncoderBlock(1, n_filters)
         self.down1 = Down222()
-        self.conv2 = EncoderBlock(n_filters, n_filters*2)
+        self.conv2 = EncoderBlock(n_filters, n_filters)
         self.down2 = Down222()
-        self.conv3 = EncoderBlock(n_filters*2, n_filters*4)
+        self.conv3 = EncoderBlock(n_filters, n_filters)
         self.down3 = Down222()
-        self.conv4 = EncoderBlock(n_filters*4, n_filters*8)
+        self.conv4 = EncoderBlock(n_filters, n_filters)
         self.down4 = Down222()
-        self.conv5 = EncoderBlock(n_filters*8, n_filters*16)
-        self.discout = DiscriminatorOut(n_filters*16, 1)
+        self.conv5 = EncoderBlock(n_filters, n_filters)
+        self.discout = DiscriminatorOut(n_filters, 1)
 
     def forward(self, x_in):
         x = self.conv1(x_in)
@@ -356,30 +356,28 @@ class LightningSHAPR_GANoptimization(pl.LightningModule):
     def training_step(self, train_batch, batch_idx, optimizer_idx):
         images, true_obj = train_batch
         pred = self.forward(images)
-        #loss = self.binary_crossentropy_Dice(true_obj, pred)
-        #self.log("train_loss", loss)
-        #return loss
 
         # train generator
         if optimizer_idx == 0:
             # generate images
-
             # ground truth result (ie: all fake)
-            # put on GPU because we created this tensor inside training_loop
             valid = torch.ones(images.size(0), 1)
             valid = valid.type_as(images)
-
             #train supervised
             supervised_loss = self.binary_crossentropy_Dice(true_obj, pred)
-
             # train with adversarial loss
-            g_loss = self.adversarial_loss(self.discriminator(pred), valid)
+            disc_pred = self.discriminator(pred)
+            g_loss = self.adversarial_loss(disc_pred, valid)
 
-            combined_loss = (supervised_loss + g_loss) / 2
+            loss = (supervised_loss + g_loss) / 2
 
-            self.log("SHAPR_adverserial_loss", g_loss)
-            self.log("SHAPR_supervised_loss", supervised_loss)
-            return combined_loss
+            tqdm_dict = {'g_loss': loss}
+            output = OrderedDict({
+                'loss': loss,
+                'progress_bar': tqdm_dict,
+                'log': tqdm_dict
+            })
+            return output
 
         # train discriminator
         if optimizer_idx == 1:
@@ -388,22 +386,25 @@ class LightningSHAPR_GANoptimization(pl.LightningModule):
             # how well can it label as real?
             valid = torch.ones(images.size(0), 1)
             valid = valid.type_as(images)
-
-            real_loss = self.adversarial_loss(self.discriminator(true_obj), valid)
+            disc_true = self.discriminator(true_obj)
+            real_loss = self.adversarial_loss(disc_true, valid)
 
             # how well can it label as fake?
             fake = torch.zeros(images.size(0), 1)
             fake = fake.type_as(images)
-
-            fake_loss = self.adversarial_loss(self.discriminator(pred.detach()), fake)
+            disc_pred = self.discriminator(true_obj)
+            fake_loss = self.adversarial_loss(disc_pred.detach(), fake)
             #ToDo: Add useful logging
 
             # discriminator loss is the average of these
-            d_loss = (real_loss + fake_loss) / 2
-            self.log("discriminator_loss", d_loss)
-            tqdm_dict = {"d_loss": d_loss}
-            output = OrderedDict({"loss": d_loss, "progress_bar": tqdm_dict, "log": tqdm_dict})
-            return d_loss
+            loss = (real_loss + fake_loss) / 2
+            tqdm_dict = {'d_loss': loss}
+            output = OrderedDict({
+                'loss': loss,
+                'progress_bar': tqdm_dict,
+                'log': tqdm_dict
+            })
+            return output
 
     def validation_step(self, val_batch, batch_idx):
         images, true_obj = val_batch
@@ -412,13 +413,13 @@ class LightningSHAPR_GANoptimization(pl.LightningModule):
         self.log("val_loss", loss)
 
     def configure_optimizers(self):
-        lr_1 = 0.1
+        lr_1 = 0.01
         b1_1 = 0.5
         b2_1 = 0.999
-        lr_2 = 0.1
+        lr_2 = 0.01
         b1_2 = 0.5
         b2_2 = 0.999
 
-        opt_g = torch.optim.Adam(self.parameters(), lr=lr_1, betas=(b1_1, b2_1))
-        opt_d = torch.optim.Adam(self.parameters(), lr=lr_2, betas=(b1_2, b2_2))
+        opt_g = torch.optim.Adam(self.shapr.parameters(), lr=lr_1, betas=(b1_1, b2_1))
+        opt_d = torch.optim.Adam(self.discriminator.parameters(), lr=lr_2, betas=(b1_2, b2_2))
         return [opt_g, opt_d], []
