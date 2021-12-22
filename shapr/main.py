@@ -31,7 +31,7 @@ The filenames of corresponding files in the obj, mask and image ordner are expet
 
 
 def run_train(amp: bool = False):
-    device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     print(settings)
     """
     Get the filenames
@@ -62,7 +62,7 @@ def run_train(amp: bool = False):
         )
         early_stopping_callback = EarlyStopping(monitor='val_loss', patience=5)
         SHAPRmodel = LightningSHAPRoptimization(settings, cv_train_filenames, cv_val_filenames)
-        SHAPR_trainer = pl.Trainer(max_epochs=settings.epochs_SHAPR, callbacks=[checkpoint_callback, early_stopping_callback])
+        SHAPR_trainer = pl.Trainer(max_epochs=settings.epochs_SHAPR, callbacks=[checkpoint_callback, early_stopping_callback], gpus = 1)
         SHAPR_trainer.fit(model= SHAPRmodel)
 
 
@@ -85,7 +85,7 @@ def run_train(amp: bool = False):
 
         # ToDo: load SHAPR model from pre-training without discriminator
         #SHAPR_GANmodel.load_from_checkpoint(os.path.join(settings.path, "logs", max(list_of_files, key=os.path.getctime)))
-        SHAPR_GAN_trainer = pl.Trainer(callbacks=[early_stopping_callback, checkpoint_callback], max_epochs=settings.epochs_cSHAPR)
+        SHAPR_GAN_trainer = pl.Trainer(callbacks=[early_stopping_callback, checkpoint_callback], max_epochs=settings.epochs_cSHAPR, gpus = 1)
         SHAPR_GAN_trainer.fit(model=SHAPR_GANmodel)
 
         """
@@ -96,7 +96,7 @@ def run_train(amp: bool = False):
                 SHAPRmodel.eval()
                 for test_file in cv_test_filenames:
                     image = torch.from_numpy(get_test_image(settings, test_file))
-                    img = image.to(device=device, dtype=torch.float32)
+                    img = image.float()
                     output = SHAPR_GANmodel(img)
                     os.makedirs(settings.result_path, exist_ok=True)
                     prediction = output.cpu().detach().numpy()
@@ -106,7 +106,7 @@ def run_train(amp: bool = False):
                 SHAPR_GANmodel.eval()
                 for test_file in cv_test_filenames:
                     image = torch.from_numpy(get_test_image(settings, test_file))
-                    img = image.to(device=device, dtype=torch.float32)
+                    img = image.float()
                     output = SHAPR_GANmodel(img)
                     os.makedirs(settings.result_path, exist_ok=True)
                     prediction = output.cpu().detach().numpy()

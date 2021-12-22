@@ -35,10 +35,10 @@ class DecoderBlock(nn.Module):
         if not mid_channels:
             mid_channels = out_channels
         self.decoderblock = nn.Sequential(
-            nn.Conv3d(in_channels, mid_channels, kernel_size=(1, 3, 3), padding='same', bias=False),
+            nn.Conv3d(in_channels, mid_channels, kernel_size=(3, 3, 3), padding='same', bias=False),
             nn.BatchNorm3d(mid_channels),
             nn.ReLU(inplace=True),
-            nn.Conv3d(mid_channels, out_channels, kernel_size=(1, 3, 3), padding='same', bias=False),
+            nn.Conv3d(mid_channels, out_channels, kernel_size=(3, 3, 3), padding='same', bias=False),
             nn.BatchNorm3d(out_channels),
             nn.ReLU(inplace=True)
         )
@@ -131,19 +131,19 @@ class SHAPR(nn.Module):
         self.conv3 = EncoderBlock(n_filters*2, n_filters*4)
         self.encout = EncoderOut(n_filters*4, n_filters*8)
 
-        self.conv4 = EncoderBlock(n_filters*8, n_filters*8)
+        self.conv4 = DecoderBlock(n_filters*8, n_filters*8)
         self.up4 = Up211(n_filters*8, n_filters*8)
-        self.conv5 = EncoderBlock(n_filters*8, n_filters*8)
+        self.conv5 = DecoderBlock(n_filters*8, n_filters*8)
         self.up5 = Up211(n_filters*8, n_filters*8)
-        self.conv6 = EncoderBlock(n_filters*8, n_filters*4)
+        self.conv6 = DecoderBlock(n_filters*8, n_filters*4)
         self.up6 = Up222(n_filters*4, n_filters*4)
-        self.conv7 = EncoderBlock(n_filters*4, n_filters*4)
+        self.conv7 = DecoderBlock(n_filters*4, n_filters*4)
         self.up7 = Up211(n_filters*4, n_filters*4)
-        self.conv8 = EncoderBlock(n_filters*4, n_filters*2)
+        self.conv8 = DecoderBlock(n_filters*4, n_filters*2)
         self.up8 = Up211(n_filters*2, n_filters*2)
-        self.conv9 = EncoderBlock(n_filters*2, n_filters)
+        self.conv9 = DecoderBlock(n_filters*2, n_filters)
         self.up9 = Up222(n_filters, n_filters)
-        self.conv10 = EncoderBlock(n_filters, n_filters)
+        self.conv10 = DecoderBlock(n_filters, n_filters)
         self.decout = DecoderOut(n_filters, 1)
 
 
@@ -275,7 +275,7 @@ class LightningSHAPRoptimization(pl.LightningModule):
     def binary_crossentropy_Dice(self, y_pred, y_true):
         cross_entropy_loss = nn.CrossEntropyLoss()
         #ToDo replace MSE with dice loss
-        return self.MSEloss(y_pred, y_true) + cross_entropy_loss(y_pred, y_true)
+        return self.MSEloss(y_pred, y_true) #+ cross_entropy_loss(y_pred, y_true)
 
     def training_step(self, train_batch, batch_idx):
         images, true_obj = train_batch
@@ -336,7 +336,7 @@ class LightningSHAPR_GANoptimization(pl.LightningModule):
     def binary_crossentropy_Dice(self, y_pred, y_true):
         cross_entropy_loss = nn.CrossEntropyLoss()
         #ToDo replace MSE with dice loss
-        return self.MSEloss(y_pred, y_true) + cross_entropy_loss(y_pred, y_true)
+        return self.MSEloss(y_pred, y_true) #+ cross_entropy_loss(y_pred, y_true)
 
     def train_dataloader(self):
         dataset = SHAPRDataset(self.path, self.cv_train_filenames)
@@ -368,8 +368,8 @@ class LightningSHAPR_GANoptimization(pl.LightningModule):
             # train with adversarial loss
             disc_pred = self.discriminator(pred)
             g_loss = self.adversarial_loss(disc_pred, valid)
-
-            loss = (supervised_loss + g_loss) / 2
+            #weight the supervised loss by a factor 10 heavier
+            loss = (10 * supervised_loss + g_loss) / 11
 
             tqdm_dict = {'g_loss': loss}
             output = OrderedDict({
@@ -394,7 +394,6 @@ class LightningSHAPR_GANoptimization(pl.LightningModule):
             fake = fake.type_as(images)
             disc_pred = self.discriminator(true_obj)
             fake_loss = self.adversarial_loss(disc_pred.detach(), fake)
-            #ToDo: Add useful logging
 
             # discriminator loss is the average of these
             loss = (real_loss + fake_loss) / 2
@@ -416,7 +415,7 @@ class LightningSHAPR_GANoptimization(pl.LightningModule):
         lr_1 = 0.01
         b1_1 = 0.5
         b2_1 = 0.999
-        lr_2 = 0.01
+        lr_2 = 0.00000005
         b1_2 = 0.5
         b2_2 = 0.999
 

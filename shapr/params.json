@@ -1,8 +1,8 @@
 {
-    "path": "/home/dominik/Documents/SHAPR_pytorch/docs/sample/",
-    "result_path": "/home/dominik/Documents/SHAPR_pytorch/docs/sample/results/",
+    "path": "/media/dominik/LaCie/SHAPR_pytorch/Blood_cell/",
+    "result_path": "/media/dominik/LaCie/SHAPR_pytorch/Blood_cell/results/",
     "random_seed" : 0,
-    "batch_size": 6,
-    "epochs_SHAPR": 10,
-    "epochs_cSHAPR": 10
+    "batch_size": 30,
+    "epochs_SHAPR": 30,
+    "epochs_cSHAPR": 30
 }
