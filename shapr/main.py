@@ -64,6 +64,7 @@ def run_train(amp: bool = False):
         SHAPRmodel = LightningSHAPRoptimization(settings, cv_train_filenames, cv_val_filenames)
         SHAPR_trainer = pl.Trainer(max_epochs=settings.epochs_SHAPR, callbacks=[checkpoint_callback, early_stopping_callback], gpus = 1)
         SHAPR_trainer.fit(model= SHAPRmodel)
+        torch.save(SHAPRmodel.state_dict(), os.path.join(settings.path, "logs/SHAPR_state_dict"))
 
 
         """
@@ -80,11 +81,7 @@ def run_train(amp: bool = False):
         )
 
         SHAPR_GANmodel = LightningSHAPR_GANoptimization(settings, cv_train_filenames, cv_val_filenames)
-        files = [f for f in os.listdir(settings.path + "logs/") if "SHAPR_training" in f]
-        list_of_files = [settings.path + "logs/" + f for f in files]
-
-        # ToDo: load SHAPR model from pre-training without discriminator
-        #SHAPR_GANmodel.load_from_checkpoint(os.path.join(settings.path, "logs", max(list_of_files, key=os.path.getctime)))
+        #SHAPR_GANmodel.load_state_dict(torch.load(os.path.join(settings.path, "logs/SHAPR_state_dict")))
         SHAPR_GAN_trainer = pl.Trainer(callbacks=[early_stopping_callback, checkpoint_callback], max_epochs=settings.epochs_cSHAPR, gpus = 1)
         SHAPR_GAN_trainer.fit(model=SHAPR_GANmodel)
 

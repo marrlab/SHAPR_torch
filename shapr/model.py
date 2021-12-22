@@ -316,6 +316,8 @@ class LightningSHAPR_GANoptimization(pl.LightningModule):
         self.batch_size = settings.batch_size
         # Define model
         self.shapr = SHAPR()
+        if settings.epochs_SHAPR > 0:
+            self.shapr.load_state_dict(torch.load(os.path.join(settings.path, "logs/SHAPR_state_dict")), strict=False)
         self.discriminator = Discriminator()
         # Define learning rate
         self.lr = 0.01

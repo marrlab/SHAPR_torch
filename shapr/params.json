@@ -2,7 +2,7 @@
     "path": "/media/dominik/LaCie/SHAPR_pytorch/Blood_cell/",
     "result_path": "/media/dominik/LaCie/SHAPR_pytorch/Blood_cell/results/",
     "random_seed" : 0,
-    "batch_size": 30,
-    "epochs_SHAPR": 30,
-    "epochs_cSHAPR": 30
+    "batch_size": 20,
+    "epochs_SHAPR": 1,
+    "epochs_cSHAPR": 1
 }
