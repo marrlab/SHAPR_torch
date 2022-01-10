@@ -1,7 +1,7 @@
 from tqdm import tqdm
 import torch
 import torch.nn.functional as F
-from metrics import DiceLoss
+from metrics import SoftDiceLoss
 
 def evaluate(net, dataloader, device):
     net.eval()

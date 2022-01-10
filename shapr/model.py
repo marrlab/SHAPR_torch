@@ -4,7 +4,7 @@ import torch.nn.functional as F
 import pytorch_lightning as pl
 from data_generator import SHAPRDataset
 from torch.utils.data import DataLoader, random_split
-#from .metrics import DiceLoss
+from metrics import SoftDiceLoss
 import torchvision
 from collections import OrderedDict
 import os
@@ -260,7 +260,8 @@ class LightningSHAPRoptimization(pl.LightningModule):
         self.lr = 0.01
 
         # Defining loss
-        self.loss = nn.CrossEntropyLoss()
+        self.ce_loss = nn.CrossEntropyLoss()
+        self.dice_loss = SoftDiceLoss(weight=None)
 
     def forward(self, x):
         return self.shapr(x)
@@ -273,8 +274,12 @@ class LightningSHAPRoptimization(pl.LightningModule):
         return MSE(y_true, y_pred)
 
     def binary_crossentropy_Dice(self, y_pred, y_true):
+        softmaxed_pred = torch.nn.functional.softmax(y_pred, dim=1)
         cross_entropy_loss = nn.CrossEntropyLoss()
-        #ToDo replace MSE with dice loss
+        ce_loss = self.ce_loss(y_pred, y_true)
+        dice_loss = self.dice_loss(softmaxed_pred, y_true.long())
+        total_loss = (ce_loss + dice_loss) / 2
+
         return self.MSEloss(y_pred, y_true) #+ cross_entropy_loss(y_pred, y_true)
 
     def training_step(self, train_batch, batch_idx):
@@ -317,12 +322,24 @@ class LightningSHAPR_GANoptimization(pl.LightningModule):
         # Define model
         self.shapr = SHAPR()
         if settings.epochs_SHAPR > 0:
-            self.shapr.load_state_dict(torch.load(os.path.join(settings.path, "logs/SHAPR_state_dict")), strict=False)
+            list_of_weights = os.listdir(settings.path + "logs/")
+            list_of_weights = [settings.path + "logs/" + wp for wp in list_of_weights]
+            latest_weights = max(list_of_weights, key=os.path.getctime)
+            checkpoint = torch.load(latest_weights, map_location=lambda storage, loc: storage)
+            new_checkpoint = OrderedDict()
+            for k, v in checkpoint['state_dict'].items():
+                if 'shapr' in k:
+                    name = k[6:]  # remove `module.`
+                else:
+                    name = k
+                new_checkpoint[name] = v
+
+
+            self.shapr.load_state_dict(new_checkpoint)
+
         self.discriminator = Discriminator()
-        # Define learning rate
         self.lr = 0.01
 
-        # Defining loss
         self.loss = nn.CrossEntropyLoss()
 
     def forward(self, z):

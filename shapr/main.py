@@ -60,12 +60,13 @@ def run_train(amp: bool = False):
             save_top_k=3,
             mode="min",
         )
-        early_stopping_callback = EarlyStopping(monitor='val_loss', patience=5)
+        early_stopping_callback = EarlyStopping(monitor='val_loss', patience=8)
         SHAPRmodel = LightningSHAPRoptimization(settings, cv_train_filenames, cv_val_filenames)
         SHAPR_trainer = pl.Trainer(max_epochs=settings.epochs_SHAPR, callbacks=[checkpoint_callback, early_stopping_callback], gpus = 1)
         SHAPR_trainer.fit(model= SHAPRmodel)
-        torch.save(SHAPRmodel.state_dict(), os.path.join(settings.path, "logs/SHAPR_state_dict"))
-
+        torch.save({
+            'state_dict': SHAPRmodel.state_dict(),
+        }, os.path.join(settings.path, "logs/")+"SHAPR_training.ckpt")
 
         """
         After training SHAPR for the set number of epochs, we train the adverserial model
@@ -81,7 +82,13 @@ def run_train(amp: bool = False):
         )
 
         SHAPR_GANmodel = LightningSHAPR_GANoptimization(settings, cv_train_filenames, cv_val_filenames)
-        #SHAPR_GANmodel.load_state_dict(torch.load(os.path.join(settings.path, "logs/SHAPR_state_dict")))
+
+        '''if settings.epochs_SHAPR > 0:
+            list_of_weights = os.listdir(settings.path + "logs/")
+            list_of_weights = [settings.path + "logs/" + wp for wp in list_of_weights]
+            latest_weights = max(list_of_weights, key=os.path.getctime)
+            checkpoint = torch.load(latest_weights, map_location=lambda storage, loc: storage)
+            SHAPR_GANmodel.load_state_dict(checkpoint["state_dict"], strict=False)'''
         SHAPR_GAN_trainer = pl.Trainer(callbacks=[early_stopping_callback, checkpoint_callback], max_epochs=settings.epochs_cSHAPR, gpus = 1)
         SHAPR_GAN_trainer.fit(model=SHAPR_GANmodel)
 
