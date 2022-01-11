@@ -1,7 +1,7 @@
 from tqdm import tqdm
 import torch
 import torch.nn.functional as F
-from metrics import dice_coeff
+from metrics import SoftDiceLoss
 
 def evaluate(net, dataloader, device):
     net.eval()
@@ -19,7 +19,7 @@ def evaluate(net, dataloader, device):
             # predict the mask
             mask_pred = net(image)
 
-            error += dice_coeff(mask_pred, mask_true)
+            #error += dice_coeff(mask_pred, mask_true)
 
     net.train()
 

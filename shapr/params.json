@@ -1,8 +1,8 @@
 {
-    "path": "/home/dominik/Documents/SHAPR_pytorch/docs/sample/",
-    "result_path": "/home/dominik/Documents/SHAPR_pytorch/docs/sample/results/",
+    "path": "/media/dominik/LaCie/SHAPR_pytorch/Organoid/",
+    "result_path": "/media/dominik/LaCie/SHAPR_pytorch/Organoid/results/",
     "random_seed" : 0,
-    "batch_size": 6,
-    "epochs_SHAPR": 15,
-    "epochs_cSHAPR": 15
+    "batch_size": 5,
+    "epochs_SHAPR": 10,
+    "epochs_cSHAPR": 10
 }

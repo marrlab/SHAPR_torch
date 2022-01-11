@@ -1,44 +1,82 @@
+
+import rising
+from rising import transforms as rtf
+from typing import Sequence, Optional, Union
 import torch
-import torch.nn as nn
-from shapr.utils import *
-import torch.nn.functional as F
-from torch import Tensor
 
-def dice_coeff(input: Tensor, target: Tensor, reduce_batch_first: bool = False, epsilon=1e-6):
-    # adapted from: https://github.com/milesial/Pytorch-UNet/
-    # Average of Dice coefficient for all batches, or for a single mask
-    assert input.size() == target.size()
-    if input.dim() == 2 and reduce_batch_first:
-        raise ValueError(f'Dice: asked to reduce batch but got tensor without batch dimension (shape {input.shape})')
+# Taken from https://github.com/justusschock/dl-utils/blob/master/dlutils/losses/soft_dice.py
+class SoftDiceLoss(torch.nn.Module):
+    """Soft Dice Loss"""
+    def __init__(self, square_nom: bool = False,
+                 square_denom: bool = False,
+                 weight: Optional[Union[Sequence, torch.Tensor]] = None,
+                 smooth: float = 1.):
+        """
+        Args:
+            square_nom: whether to square the nominator
+            square_denom: whether to square the denominator
+            weight: additional weighting of individual classes
+            smooth: smoothing for nominator and denominator
 
-    if input.dim() == 2 or reduce_batch_first:
-        inter = torch.dot(input.reshape(-1), target.reshape(-1))
-        sets_sum = torch.sum(input) + torch.sum(target)
-        if sets_sum.item() == 0:
-            sets_sum = 2 * inter
+        """
+        super().__init__()
+        self.square_nom = square_nom
+        self.square_denom = square_denom
 
-        return (2 * inter + epsilon) / (sets_sum + epsilon)
-    else:
-        # compute and average metric for each batch element
-        dice = 0
-        for i in range(input.shape[0]):
-            dice += dice_coeff(input[i, ...], target[i, ...])
-        return dice / input.shape[0]
+        self.smooth = smooth
 
-def dice_crossentropy_loss(y_true, y_pred):
-    """
-    Adding the dice loss and the binary crossentropy as well as a penalty for the volume
-    """
-    binary_crossentropy = torch.nn.BCELoss()
-    return DiceLoss(y_true, y_pred) #+ binary_crossentropy(y_true, y_pred)
+        if weight is not None:
+            if not isinstance(weight, torch.Tensor):
+                weight = torch.tensor(weight)
 
-def mse(y_true, y_pred):
-    MSE = torch.nn.MSELoss()
-    return MSE(y_true, y_pred)
+            self.register_buffer("weight", weight)
+        else:
+            self.weight = None
 
-def IoU(y_true,y_pred):
-    intersection = y_true + y_pred
-    intersection = np.count_nonzero(intersection > 1.5)
-    union = y_true + y_pred
-    union = np.count_nonzero(union > 0.5)
-    return intersection / union
+    def forward(self, predictions: torch.Tensor, targets: torch.Tensor) -> torch.Tensor:
+        """
+        Computes SoftDice Loss
+
+        Args:
+            predictions: the predictions obtained by the network
+            targets: the targets (ground truth) for the :attr:`predictions`
+
+        Returns:
+            torch.Tensor: the computed loss value
+        """
+        # number of classes for onehot
+        n_classes = predictions.shape[1]
+        with torch.no_grad():
+            targets_onehot = rtf.functional.channel.one_hot_batch(
+                targets.unsqueeze(1), num_classes=n_classes)
+        # sum over spatial dimensions
+        dims = tuple(range(2, predictions.dim()))
+
+        # compute nominator
+        if self.square_nom:
+            nom = torch.sum((predictions * targets_onehot.float()) ** 2, dim=dims)
+        else:
+            nom = torch.sum(predictions * targets_onehot.float(), dim=dims)
+        nom = 2 * nom + self.smooth
+
+        # compute denominator
+        if self.square_denom:
+            i_sum = torch.sum(predictions ** 2, dim=dims)
+            t_sum = torch.sum(targets_onehot ** 2, dim=dims)
+        else:
+            i_sum = torch.sum(predictions, dim=dims)
+            t_sum = torch.sum(targets_onehot, dim=dims)
+
+        denom = i_sum + t_sum.float() + self.smooth
+
+        # compute loss
+        frac = nom / denom
+
+        # apply weight for individual classesproperly
+        if self.weight is not None:
+            frac = self.weight * frac
+
+        # average over classes
+        frac = - torch.mean(frac, dim=1)
+
+        return frac
