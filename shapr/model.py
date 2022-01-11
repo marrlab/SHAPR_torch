@@ -378,8 +378,6 @@ class LightningSHAPR_GANoptimization(pl.LightningModule):
 
         # train generator
         if optimizer_idx == 0:
-            # generate images
-            # ground truth result (ie: all fake)
             valid = torch.ones(images.size(0), 1)
             valid = valid.type_as(images)
             #train supervised
@@ -400,9 +398,7 @@ class LightningSHAPR_GANoptimization(pl.LightningModule):
 
         # train discriminator
         if optimizer_idx == 1:
-            # Measure discriminator's ability to classify real from generated samples
-
-            # how well can it label as real?
+            # test discriminator on real images
             valid = torch.ones(images.size(0), 1)
             valid = valid.type_as(images)
             disc_true = self.discriminator(true_obj)
@@ -414,7 +410,7 @@ class LightningSHAPR_GANoptimization(pl.LightningModule):
             disc_pred = self.discriminator(true_obj)
             fake_loss = self.adversarial_loss(disc_pred.detach(), fake)
 
-            # discriminator loss is the average of these
+            # test discriminator on fake images
             loss = (real_loss + fake_loss) / 2
             tqdm_dict = {'d_loss': loss}
             output = OrderedDict({
@@ -434,7 +430,7 @@ class LightningSHAPR_GANoptimization(pl.LightningModule):
         lr_1 = 0.01
         b1_1 = 0.5
         b2_1 = 0.999
-        lr_2 = 0.00000005
+        lr_2 = 0.001 #0.00000005
         b1_2 = 0.5
         b2_2 = 0.999
 

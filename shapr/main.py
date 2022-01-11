@@ -83,21 +83,15 @@ def run_train(amp: bool = False):
 
         SHAPR_GANmodel = LightningSHAPR_GANoptimization(settings, cv_train_filenames, cv_val_filenames)
 
-        '''if settings.epochs_SHAPR > 0:
-            list_of_weights = os.listdir(settings.path + "logs/")
-            list_of_weights = [settings.path + "logs/" + wp for wp in list_of_weights]
-            latest_weights = max(list_of_weights, key=os.path.getctime)
-            checkpoint = torch.load(latest_weights, map_location=lambda storage, loc: storage)
-            SHAPR_GANmodel.load_state_dict(checkpoint["state_dict"], strict=False)'''
         SHAPR_GAN_trainer = pl.Trainer(callbacks=[early_stopping_callback, checkpoint_callback], max_epochs=settings.epochs_cSHAPR, gpus = 1)
         SHAPR_GAN_trainer.fit(model=SHAPR_GANmodel)
 
         """
         The 3D shape of the test data for each fold will be predicted here
         """
-        if settings.epochs_SHAPR > 0:
+        if settings.epochs_cSHAPR > 0:
             with torch.no_grad():
-                SHAPRmodel.eval()
+                SHAPR_GANmodel.eval()
                 for test_file in cv_test_filenames:
                     image = torch.from_numpy(get_test_image(settings, test_file))
                     img = image.float()
@@ -105,13 +99,14 @@ def run_train(amp: bool = False):
                     os.makedirs(settings.result_path, exist_ok=True)
                     prediction = output.cpu().detach().numpy()
                     imsave(os.path.join(settings.result_path, test_file), (255 * prediction).astype("uint8"))
+
         else:
             with torch.no_grad():
-                SHAPR_GANmodel.eval()
+                SHAPRmodel.eval()
                 for test_file in cv_test_filenames:
                     image = torch.from_numpy(get_test_image(settings, test_file))
                     img = image.float()
-                    output = SHAPR_GANmodel(img)
+                    output = SHAPRmodel(img)
                     os.makedirs(settings.result_path, exist_ok=True)
                     prediction = output.cpu().detach().numpy()
                     imsave(os.path.join(settings.result_path, test_file), (255 * prediction).astype("uint8"))
