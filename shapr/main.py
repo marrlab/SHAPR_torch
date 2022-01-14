@@ -32,6 +32,13 @@ The filenames of corresponding files in the obj, mask and image ordner are expet
 
 def run_train(amp: bool = False):
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+
+    # Handle GPU vs CPU selection
+    if device == torch.device("cpu"):
+        gpus = None
+    else:
+        gpus = 1
+
     print(settings)
     """
     Get the filenames
@@ -62,7 +69,7 @@ def run_train(amp: bool = False):
         )
         early_stopping_callback = EarlyStopping(monitor='val_loss', patience=8)
         SHAPRmodel = LightningSHAPRoptimization(settings, cv_train_filenames, cv_val_filenames)
-        SHAPR_trainer = pl.Trainer(max_epochs=settings.epochs_SHAPR, callbacks=[checkpoint_callback, early_stopping_callback], gpus = 1)
+        SHAPR_trainer = pl.Trainer(max_epochs=settings.epochs_SHAPR, callbacks=[checkpoint_callback, early_stopping_callback], gpus=gpus)
         SHAPR_trainer.fit(model= SHAPRmodel)
         torch.save({
             'state_dict': SHAPRmodel.state_dict(),
@@ -83,7 +90,7 @@ def run_train(amp: bool = False):
 
         SHAPR_GANmodel = LightningSHAPR_GANoptimization(settings, cv_train_filenames, cv_val_filenames)
 
-        SHAPR_GAN_trainer = pl.Trainer(callbacks=[early_stopping_callback, checkpoint_callback], max_epochs=settings.epochs_cSHAPR, gpus = 1)
+        SHAPR_GAN_trainer = pl.Trainer(callbacks=[early_stopping_callback, checkpoint_callback], max_epochs=settings.epochs_cSHAPR, gpus=gpus)
         SHAPR_GAN_trainer.fit(model=SHAPR_GANmodel)
 
         """
