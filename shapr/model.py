@@ -9,6 +9,9 @@ import torchvision
 from collections import OrderedDict
 import os
 
+from torch_topological.nn import CubicalComplex
+from torch_topological.nn import SummaryStatisticLoss
+
 
 class EncoderBlock(nn.Module):
     """(convolution => [BN] => ReLU) * 2"""
@@ -263,6 +266,15 @@ class LightningSHAPRoptimization(pl.LightningModule):
         self.ce_loss = nn.CrossEntropyLoss()
         self.dice_loss = SoftDiceLoss(weight=None)
 
+        # Required for topological feature calculation. We want cubical
+        # complexes because they handle images intrinsically.
+        #
+        #  TODO: Consider superlevel set filtrations?
+        self.cubical_complex = CubicalComplex()
+        self.topo_loss = SummaryStatisticLoss(
+            'polynomial_function', p=2, q=2
+        )
+
     def forward(self, x):
         return self.shapr(x)
 
@@ -286,6 +298,14 @@ class LightningSHAPRoptimization(pl.LightningModule):
         images, true_obj = train_batch
         pred = self.forward(images)
         loss = self.binary_crossentropy_Dice(true_obj, pred)
+
+        # Calculate topological features
+        pers_info = self.cubical_complex(pred.squeeze())
+
+        # TODO: Not the proper format for the `CubicalComplex` class.
+        # Need to re-implement this.
+        pers_info_true = self.cubical_complex(true_obj.squeeze())
+
         self.log("train_loss", loss)
         return loss
 
