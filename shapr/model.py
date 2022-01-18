@@ -10,7 +10,7 @@ from collections import OrderedDict
 import os
 
 from torch_topological.nn import CubicalComplex
-from torch_topological.nn import SummaryStatisticLoss
+from torch_topological.nn import WassersteinDistance
 
 
 class EncoderBlock(nn.Module):
@@ -271,9 +271,7 @@ class LightningSHAPRoptimization(pl.LightningModule):
         #
         #  TODO: Consider superlevel set filtrations?
         self.cubical_complex = CubicalComplex(dim=3)
-        self.topo_loss = SummaryStatisticLoss(
-            'polynomial_function', p=2, q=2
-        )
+        self.topo_loss = WassersteinDistance()
 
     def forward(self, x):
         return self.shapr(x)
@@ -300,21 +298,33 @@ class LightningSHAPRoptimization(pl.LightningModule):
         loss = self.binary_crossentropy_Dice(true_obj, pred)
 
         # FIXME: Resize for debugging purposes.
-        pred = nn.functional.interpolate(input=pred, size=(32, 32, 32))
-        true_obj = nn.functional.interpolate(input=true_obj, size=(32, 32, 32))
+        pred_ = nn.functional.interpolate(input=pred, size=(16, 16, 16))
+        true_obj_ = nn.functional.interpolate(
+            input=true_obj, size=(16, 16, 16)
+        )
 
         # Calculate topological features of predicted 3D tensor and true
         # 3D tensor. The `squeeze()` ensures that we are ignoring single
         # dimensions such as channels.
-        pers_info_pred = self.cubical_complex(pred.squeeze())
-        pers_info_true = self.cubical_complex(true_obj.squeeze())
+        pers_info_pred = self.cubical_complex(pred_.squeeze())
+        pers_info_true = self.cubical_complex(true_obj_.squeeze())
+
+        pers_info_pred = [
+            [x__ for x__ in x_ if x__.dimension == 2]
+            for x_ in pers_info_pred
+        ]
+
+        pers_info_true = [
+            [x__ for x__ in x_ if x__.dimension == 2]
+            for x_ in pers_info_true
+        ]
 
         topo_loss = torch.stack([
             self.topo_loss(pred_batch, true_batch)
             for pred_batch, true_batch in zip(pers_info_pred, pers_info_true)
         ])
 
-        loss += topo_loss.mean()
+        loss += 0.1 * topo_loss.mean()
 
         self.log("train_loss", loss)
         return loss
