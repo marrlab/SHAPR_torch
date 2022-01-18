@@ -20,4 +20,4 @@ rising = "^0.2.2"
 pytorch-lightning = "^1.5.8"
 torchvision = "^0.11.2"
 wandb = "^0.12.9"
-torch-topological = {path = "../pytorch-topological"}
+torch-topological = {path = "../pytorch-topological", develop=true}
