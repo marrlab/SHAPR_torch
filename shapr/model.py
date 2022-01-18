@@ -270,7 +270,7 @@ class LightningSHAPRoptimization(pl.LightningModule):
         # complexes because they handle images intrinsically.
         #
         #  TODO: Consider superlevel set filtrations?
-        self.cubical_complex = CubicalComplex()
+        self.cubical_complex = CubicalComplex(dim=3)
         self.topo_loss = SummaryStatisticLoss(
             'polynomial_function', p=2, q=2
         )
@@ -299,12 +299,22 @@ class LightningSHAPRoptimization(pl.LightningModule):
         pred = self.forward(images)
         loss = self.binary_crossentropy_Dice(true_obj, pred)
 
-        # Calculate topological features
-        pers_info = self.cubical_complex(pred.squeeze())
+        # FIXME: Resize for debugging purposes.
+        pred = nn.functional.interpolate(input=pred, size=(32, 32, 32))
+        true_obj = nn.functional.interpolate(input=true_obj, size=(32, 32, 32))
 
-        # TODO: Not the proper format for the `CubicalComplex` class.
-        # Need to re-implement this.
+        # Calculate topological features of predicted 3D tensor and true
+        # 3D tensor. The `squeeze()` ensures that we are ignoring single
+        # dimensions such as channels.
+        pers_info_pred = self.cubical_complex(pred.squeeze())
         pers_info_true = self.cubical_complex(true_obj.squeeze())
+
+        topo_loss = torch.stack([
+            self.topo_loss(pred_batch, true_batch)
+            for pred_batch, true_batch in zip(pers_info_pred, pers_info_true)
+        ])
+
+        loss += topo_loss.mean()
 
         self.log("train_loss", loss)
         return loss
