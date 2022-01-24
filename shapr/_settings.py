@@ -54,6 +54,8 @@ class SHAPRConfig(FrozenClass):
         batch_size="__batch_size",
         epochs_SHAPR="epochs_SHAPR",
         epochs_cSHAPR="epochs_cSHAPR",
+        topo_lambda="__topo_lambda",  # strength of topological regularisation
+        topo_interp="__topo_interp",  # size of downsampled input data
     )
 
     __config_param_default = dict(
@@ -64,6 +66,8 @@ class SHAPRConfig(FrozenClass):
         batch_size = 6,
         epochs_SHAPR = 30,
         epochs_cSHAPR = 30,
+        topo_lambda=0.0,
+        topo_interp=0,
     )
 
     def __init__(self):

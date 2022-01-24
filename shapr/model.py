@@ -270,8 +270,11 @@ class LightningSHAPRoptimization(pl.LightningModule):
         # complexes because they handle images intrinsically.
         #
         #  TODO: Consider superlevel set filtrations?
+        #  TODO: Consider different weighting schemes for Wasserstein?
         self.cubical_complex = CubicalComplex(dim=3)
-        self.topo_loss = WassersteinDistance()
+        self.topo_loss = WassersteinDistance(q=2)
+        self.topo_lambda = settings.topo_lambda
+        self.topo_interp = settings.topo_interp
 
     def forward(self, x):
         return self.shapr(x)
@@ -297,11 +300,18 @@ class LightningSHAPRoptimization(pl.LightningModule):
         pred = self.forward(images)
         loss = self.binary_crossentropy_Dice(true_obj, pred)
 
-        # FIXME: Resize for debugging purposes.
-        pred_ = nn.functional.interpolate(input=pred, size=(16, 16, 16))
-        true_obj_ = nn.functional.interpolate(
-            input=true_obj, size=(16, 16, 16)
-        )
+        if self.topo_interp != 0:
+            size = (self.topo_interp, ) * 3
+            pred_ = nn.functional.interpolate(input=pred, size=size)
+            true_obj_ = nn.functional.interpolate(
+                input=true_obj, size=size,
+            )
+
+        # No interpolation desired by client; use the original data set,
+        # thus making everything slower.
+        else:
+            pred_ = pred
+            true_obj_ = true_obj
 
         # Calculate topological features of predicted 3D tensor and true
         # 3D tensor. The `squeeze()` ensures that we are ignoring single
@@ -309,6 +319,8 @@ class LightningSHAPRoptimization(pl.LightningModule):
         pers_info_pred = self.cubical_complex(pred_.squeeze())
         pers_info_true = self.cubical_complex(true_obj_.squeeze())
 
+        # TODO: Make filtering configurable; it is possible that
+        # higher-order topological features are not useful.
         pers_info_pred = [
             [x__ for x__ in x_ if x__.dimension == 2]
             for x_ in pers_info_pred
@@ -324,9 +336,10 @@ class LightningSHAPRoptimization(pl.LightningModule):
             for pred_batch, true_batch in zip(pers_info_pred, pers_info_true)
         ])
 
-        loss += 0.1 * topo_loss.mean()
+        loss += self.topo_lambda * topo_loss.mean()
 
         self.log("train_loss", loss)
+        self.log("topo_loss", topo_loss.mean()),
         return loss
 
     def validation_step(self, val_batch, batch_idx):
