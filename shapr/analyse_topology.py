@@ -49,7 +49,7 @@ if __name__ == '__main__':
     all_dfs = []
     index = 0
 
-    for batch_index, (_, objects) in enumerate(loader):
+    for _, objects in loader:
         # TODO: Make this configurable or read it from settings?
         size = 16
         objects = torch.nn.functional.interpolate(
@@ -72,7 +72,7 @@ if __name__ == '__main__':
             diagrams = list(itertools.chain.from_iterable(diagrams))
             df = calculate_statistics(diagrams)
             df['dimension'] = dim
-            df['index'] = np.arange(len(objects)) * batch_index
+            df['index'] = np.arange(len(objects)) + index
 
             all_dfs.append(df)
 
@@ -93,4 +93,3 @@ if __name__ == '__main__':
         X.append(F)
 
     X = np.asarray(X)
-    print(X.shape)
