@@ -295,28 +295,23 @@ class LightningSHAPRoptimization(pl.LightningModule):
 
         return self.MSEloss(y_pred, y_true) #+ cross_entropy_loss(y_pred, y_true)
 
-    def training_step(self, train_batch, batch_idx):
-        images, true_obj = train_batch
-        pred = self.forward(images)
-        loss = self.binary_crossentropy_Dice(true_obj, pred)
-
+    def topological_step(self, pred_obj, true_obj):
+        """Calculate topological features and adjust loss."""
         if self.topo_interp != 0:
             size = (self.topo_interp, ) * 3
-            pred_ = nn.functional.interpolate(input=pred, size=size)
-            true_obj_ = nn.functional.interpolate(
-                input=true_obj, size=size,
-            )
+            pred_obj_ = nn.functional.interpolate(input=pred_obj, size=size)
+            true_obj_ = nn.functional.interpolate(input=true_obj, size=size)
 
         # No interpolation desired by client; use the original data set,
         # thus making everything slower.
         else:
-            pred_ = pred
+            pred_obj_ = pred_obj
             true_obj_ = true_obj
 
         # Calculate topological features of predicted 3D tensor and true
         # 3D tensor. The `squeeze()` ensures that we are ignoring single
         # dimensions such as channels.
-        pers_info_pred = self.cubical_complex(pred_.squeeze())
+        pers_info_pred = self.cubical_complex(pred_obj_.squeeze())
         pers_info_true = self.cubical_complex(true_obj_.squeeze())
 
         # TODO: Make filtering configurable; it is possible that
@@ -336,10 +331,18 @@ class LightningSHAPRoptimization(pl.LightningModule):
             for pred_batch, true_batch in zip(pers_info_pred, pers_info_true)
         ])
 
-        loss += self.topo_lambda * topo_loss.mean()
+        self.log("topo_loss", topo_loss.mean()),
+        return topo_loss.mean()
+
+
+    def training_step(self, train_batch, batch_idx):
+        images, true_obj = train_batch
+        pred = self.forward(images)
+        loss = self.binary_crossentropy_Dice(true_obj, pred)
+
+        loss += self.topo_lambda * self.topological_step(pred, true_obj)
 
         self.log("train_loss", loss)
-        self.log("topo_loss", topo_loss.mean()),
         return loss
 
     def validation_step(self, val_batch, batch_idx):
