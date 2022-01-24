@@ -349,6 +349,9 @@ class LightningSHAPRoptimization(pl.LightningModule):
         images, true_obj = val_batch
         pred = self.forward(images)
         loss = self.binary_crossentropy_Dice(true_obj, pred)
+
+        loss += self.topo_lambda * self.topological_step(pred, true_obj)
+
         self.log("val_loss", loss)
 
     def train_dataloader(self):
