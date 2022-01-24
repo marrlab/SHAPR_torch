@@ -1,8 +1,12 @@
 """Analyse topology of input data set."""
 
+import collections
 import itertools
 import os
 import torch
+import sys
+
+import pandas as pd
 
 from shapr import settings
 from shapr.data_generator import SHAPRDataset
@@ -15,6 +19,22 @@ from torch_topological.utils import total_persistence
 from torch_topological.utils import persistent_entropy
 
 
+def calculate_statistics(diagrams):
+    """Calculate statistics of batch of persistence diagrams."""
+    result = collections.defaultdict(list)
+
+    stat_fns = {
+        'total_persistence': total_persistence,
+        'persistent_entropy': persistent_entropy,
+    }
+
+    for name, fn in stat_fns.items():
+        for diagram in diagrams:
+            result[name].append(fn(diagram).numpy())
+
+    return pd.DataFrame.from_dict(result)
+
+
 if __name__ == '__main__':
     all_files = os.listdir(
         os.path.join(settings.path, "obj/")
@@ -24,6 +44,8 @@ if __name__ == '__main__':
     loader = DataLoader(data_set, batch_size=8, shuffle=True)
 
     cubical_complex = CubicalComplex(dim=3)
+
+    all_dfs = []
 
     for _, objects in loader:
         # TODO: Make this configurable or read it from settings?
@@ -46,3 +68,10 @@ if __name__ == '__main__':
             ]
 
             diagrams = list(itertools.chain.from_iterable(diagrams))
+            df = calculate_statistics(diagrams)
+            df['dimension'] = dim
+
+            all_dfs.append(df)
+
+    df = pd.concat(all_dfs)
+    df.to_csv(sys.stdout, index=False)
