@@ -8,6 +8,9 @@ import sys
 
 import numpy as np
 import pandas as pd
+import matplotlib.pyplot as plt
+
+from sklearn.manifold import MDS
 
 from shapr import settings
 from shapr.data_generator import SHAPRDataset
@@ -93,3 +96,9 @@ if __name__ == '__main__':
         X.append(F)
 
     X = np.asarray(X)
+
+    mds = MDS()
+    Z = mds.fit_transform(X)
+
+    plt.scatter(Z[:, 0], Z[:, 1])
+    plt.show()
