@@ -6,6 +6,7 @@ import os
 import torch
 import sys
 
+import numpy as np
 import pandas as pd
 
 from shapr import settings
@@ -46,8 +47,9 @@ if __name__ == '__main__':
     cubical_complex = CubicalComplex(dim=3)
 
     all_dfs = []
+    index = 0
 
-    for _, objects in loader:
+    for batch_index, (_, objects) in enumerate(loader):
         # TODO: Make this configurable or read it from settings?
         size = 16
         objects = torch.nn.functional.interpolate(
@@ -70,8 +72,25 @@ if __name__ == '__main__':
             diagrams = list(itertools.chain.from_iterable(diagrams))
             df = calculate_statistics(diagrams)
             df['dimension'] = dim
+            df['index'] = np.arange(len(objects)) * batch_index
 
             all_dfs.append(df)
 
-    df = pd.concat(all_dfs)
+        index += len(objects)
+
+    df = pd.concat(all_dfs, ignore_index=True)
     df.to_csv(sys.stdout, index=False)
+
+    # Create feature vector representation: we just group by index, then
+    # ravel all measurements over all dimensions.
+    X = []
+
+    for name, group in df.groupby('index'):
+        cols = group.columns
+        cols = [c for c in cols if c != 'dimension' and c != 'index']
+
+        F = group[cols].to_numpy().ravel()
+        X.append(F)
+
+    X = np.asarray(X)
+    print(X.shape)
