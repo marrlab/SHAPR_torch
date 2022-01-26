@@ -96,7 +96,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
 
     parser.add_argument('SOURCE', type=str, help='Source directory')
-    parser.add_argument('TARGET', type=str, help='Target directory')
+    parser.add_argument('TARGET', type=str, nargs='+', help='Target directory')
 
     args = parser.parse_args()
 
@@ -106,36 +106,36 @@ if __name__ == '__main__':
     roughness = collections.defaultdict(list)
 
     filenames = sorted(os.listdir(args.SOURCE))
-    processed = []
-
-    name = os.path.basename(args.TARGET)
-    print(name)
 
     for filename in tqdm(filenames[:5], desc='File'):
         source = imread(os.path.join(args.SOURCE, filename)) / 255.0
-        target = np.squeeze(
-            norm_thres(np.nan_to_num(
-                    imread(os.path.join(args.TARGET, filename))
+
+        for target_ in args.TARGET:
+            target = np.squeeze(
+                norm_thres(np.nan_to_num(
+                        imread(os.path.join(target_, filename))
+                    )
                 )
             )
-        )
 
-        if np.mean(source) > 0.1:
-            iou_inv[name].append(1 - IoU(source, target))
-            volume[name].append(
-                np.abs(np.sum(target) - np.sum(source)) / np.sum(source)
-            )
+            name = os.path.basename(target_)
 
-            source_surface = get_surface(source)
-            surface[name].append(
-                np.abs(get_surface(target) - source_surface) / source_surface
-            )
+            if np.mean(source) > 0.1:
+                iou_inv[name].append(1 - IoU(source, target))
+                volume[name].append(
+                    np.abs(np.sum(target) - np.sum(source)) / np.sum(source)
+                )
 
-            source_roughness = get_roughness(source)
-            roughness[name].append(
-                np.abs(get_roughness(target) - source_roughness)
-                / source_roughness
-            )
+                source_surface = get_surface(source)
+                surface[name].append(
+                    np.abs(get_surface(target) - source_surface) / source_surface
+                )
+
+                source_roughness = get_roughness(source)
+                roughness[name].append(
+                    np.abs(get_roughness(target) - source_roughness)
+                    / source_roughness
+                )
 
     fig, axes = plt.subplots(nrows=4, squeeze=True, figsize=(5, 6))
 
