@@ -1,6 +1,9 @@
 """Evaluate data with respect to ground truth."""
 
+import argparse
 import os
+
+from tqdm import tqdm
 
 import numpy as np
 from skimage.io import imread, imsave
@@ -31,8 +34,6 @@ tf_path = "./results/first-try"
 
 data_path_org = "../docs/sample/"
 data_path_res = "../docs/sample/results/"
-
-
 
 '''Threshold data using Otus methods'''
 def norm_thres(data): 
@@ -78,36 +79,47 @@ def get_roughness(obj):
 
 '''Loop over files to obtain error metrics'''
 
-iou = []
-volume = []
-surface = []
-roughness = []
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
 
-files = os.listdir(data_path_res)
-print(len(files))
+    parser.add_argument('SOURCE', type=str, help='Source directory')
+    parser.add_argument('TARGET', type=str, help='Target directory')
 
-fname = []
-for index, file in enumerate(files):
-    groundtruth = imread(os.path.join(data_path_org, "obj", file)) / 255.
-    data = np.squeeze(norm_thres(np.nan_to_num(imread(data_path_res + file))))
+    args = parser.parse_args()
 
-    if all([np.mean(groundtruth)]) > 0.1:
-        print(f'Processing {file}...')
 
-        iou.append(IoU(groundtruth, data))
-        volume.append(np.abs(np.sum(data)-np.sum(groundtruth))/np.sum(groundtruth))
+    iou = []
+    volume = []
+    surface = []
+    roughness = []
 
-        gt_surface = get_surface(groundtruth)
-        surface.append(np.abs(get_surface(data) -gt_surface )/gt_surface)
+    filenames = sorted(os.listdir(args.SOURCE))
+    processed = []
 
-        gt_roughness = get_roughness(groundtruth)
-        roughness.append(np.abs(get_roughness(data)-gt_roughness)/gt_roughness)
+    for filename in tqdm(filenames, desc='File'):
+        source = imread(os.path.join(args.SOURCE, filename)) / 255.0
+        target = np.squeeze(
+            norm_thres(np.nan_to_num(
+                    imread(os.path.join(args.TARGET, filename))
+                )
+            )
+        )
 
-        fname.append(file)
-    else:
-        print(f'Skipping {file}...')
+        if np.mean(source) > 0.1:
+            #iou.append(IoU(groundtruth, data))
+            #volume.append(np.abs(np.sum(data)-np.sum(groundtruth))/np.sum(groundtruth))
 
-raise 'heck'
+            #gt_surface = get_surface(groundtruth)
+            #surface.append(np.abs(get_surface(data) -gt_surface )/gt_surface)
+
+            #gt_roughness = get_roughness(groundtruth)
+            #roughness.append(np.abs(get_roughness(data)-gt_roughness)/gt_roughness)
+
+            #fname.append(file)
+
+            pass
+
+    raise 'heck'
 
 # In[148]:
 
