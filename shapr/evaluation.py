@@ -1,12 +1,14 @@
 """Evaluate data with respect to ground truth."""
 
 import argparse
+import collections
 import os
 import trimesh
 
 from tqdm import tqdm
 
 import numpy as np
+import pandas as pd
 
 from skimage import measure
 from skimage.io import imread
@@ -70,7 +72,7 @@ def get_roughness(obj):
 def swarmplot(data, label, ax):
     """Create swarmplot with specific label."""
     ax = sns.violinplot(
-        x=data,
+        data=data,
         showfliers=False,
         color='lightgray',
         boxprops={'facecolor': 'None'},
@@ -79,7 +81,7 @@ def swarmplot(data, label, ax):
     )
 
     ax = sns.swarmplot(
-        x=data,
+        data=data,
         color='.25',
         size=1.5,
         orient='h',
@@ -98,15 +100,18 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
-    iou = []
-    volume = []
-    surface = []
-    roughness = []
+    iou_inv = collections.defaultdict(list)
+    volume = collections.defaultdict(list)
+    surface = collections.defaultdict(list)
+    roughness = collections.defaultdict(list)
 
     filenames = sorted(os.listdir(args.SOURCE))
     processed = []
 
-    for filename in tqdm(filenames, desc='File'):
+    name = os.path.basename(args.TARGET)
+    print(name)
+
+    for filename in tqdm(filenames[:5], desc='File'):
         source = imread(os.path.join(args.SOURCE, filename)) / 255.0
         target = np.squeeze(
             norm_thres(np.nan_to_num(
@@ -116,31 +121,28 @@ if __name__ == '__main__':
         )
 
         if np.mean(source) > 0.1:
-            iou.append(IoU(source, target))
-            volume.append(
+            iou_inv[name].append(1 - IoU(source, target))
+            volume[name].append(
                 np.abs(np.sum(target) - np.sum(source)) / np.sum(source)
             )
 
             source_surface = get_surface(source)
-            surface.append(
+            surface[name].append(
                 np.abs(get_surface(target) - source_surface) / source_surface
             )
 
             source_roughness = get_roughness(source)
-            roughness.append(
+            roughness[name].append(
                 np.abs(get_roughness(target) - source_roughness)
                 / source_roughness
             )
 
-    print(len(iou))
-    print(np.mean(iou) * 100, np.std(iou) * 100)
-
     fig, axes = plt.subplots(nrows=4, squeeze=True, figsize=(5, 6))
 
-    swarmplot(1 - np.asarray(iou), '1 - IoU', axes[0])
-    swarmplot(volume, 'Volume error', axes[1])
-    swarmplot(surface, 'Surface error', axes[2])
-    swarmplot(roughness, 'Roughness error', axes[3])
+    swarmplot(pd.DataFrame.from_dict(iou_inv), '1 - IoU', axes[0])
+    swarmplot(pd.DataFrame.from_dict(volume), 'Volume error', axes[1])
+    swarmplot(pd.DataFrame.from_dict(surface), 'Surface error', axes[2])
+    swarmplot(pd.DataFrame.from_dict(roughness), 'Roughness error', axes[3])
 
     plt.tight_layout()
     plt.show()
