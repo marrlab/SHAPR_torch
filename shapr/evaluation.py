@@ -2,37 +2,21 @@
 
 import argparse
 import os
+import trimesh
 
 from tqdm import tqdm
 
 import numpy as np
-from skimage.io import imread, imsave
+
 from skimage import measure
-import trimesh
+from skimage.io import imread
+
+
 import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d.art3d import Poly3DCollection
-from skimage.transform import resize
-from skimage.filters import threshold_otsu
-from skimage.filters import gaussian
 import seaborn as sns
-from scipy.ndimage.morphology import binary_dilation
-from scipy.ndimage import gaussian_filter
-import copy
-from scipy.ndimage.morphology import binary_fill_holes
-from scipy.stats import wilcoxon, mannwhitneyu
 
+from skimage.filters import threshold_otsu
 
-#tf_path = "/media/dominik/LaCie/ShapeAE/Organoid_Manual_Segmentation/ShapeAE_dataset/Results_paper/ShapeAE_results/"
-#pytorch_path = "/media/dominik/LaCie/SHAPR_pytorch/Organoid/results/"
-#dataset_path = "/media/dominik/LaCie/ShapeAE/Organoid_Manual_Segmentation/ShapeAE_dataset/"
-
-
-tf_path = "./results/first-try"
-#pytorch_path = "/media/dominik/LaCie/SHAPR_pytorch/Organoid/results/"
-#dataset_path = "/media/dominik/LaCie/ShapeAE/Organoid_Manual_Segmentation/ShapeAE_dataset/"
-
-data_path_org = "../docs/sample/"
-data_path_res = "../docs/sample/results/"
 
 '''Threshold data using Otus methods'''
 def norm_thres(data): 
@@ -99,7 +83,7 @@ def swarmplot(data, label):
     plt.xticks(size=15)
     plt.locator_params(axis='x', nbins=4)
     plt.tight_layout()
-    plt.grid(b=None)
+    plt.grid(visible=False)
 
 
 if __name__ == '__main__':
@@ -143,9 +127,6 @@ if __name__ == '__main__':
                 np.abs(get_roughness(target) - source_roughness)
                 / source_roughness
             )
-
-            print(type(source_roughness))
-            print(dir(source_roughness))
 
     print(len(iou))
     print(np.mean(iou) * 100, np.std(iou) * 100)
