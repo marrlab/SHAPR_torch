@@ -18,20 +18,21 @@ import seaborn as sns
 from skimage.filters import threshold_otsu
 
 
-'''Threshold data using Otus methods'''
-def norm_thres(data): 
+def norm_thres(data):
+    """Perform Otsu's method for thresholding."""
     maxd = np.max(data)
     data = np.nan_to_num(data / maxd)
-    if np.max(data)  > 0:
+    if np.max(data) > 0:
         thresh = threshold_otsu(data)
         binary = data > thresh
-    else: 
+    else:
         binary = data
-    return binary*1.0
+
+    return binary * 1.0
 
 
-'''Calculate surface using a mesh'''
 def get_surface(obj):
+    """Calculate surface area using a mesh."""
     verts_pred, faces_pred, _, _ = measure.marching_cubes(
         obj * 255.,
         method='lewiner'
@@ -40,8 +41,8 @@ def get_surface(obj):
     return surface_pred
 
 
-'''Calculate IoU between GT and prediction'''
-def IoU(y_true,y_pred): 
+def IoU(y_true, y_pred):
+    """Calculate IoU between ground truth and prediction."""
     intersection = y_true + y_pred
     intersection = np.count_nonzero(intersection > 1.5)
     union = y_true + y_pred
@@ -49,13 +50,13 @@ def IoU(y_true,y_pred):
     return intersection / union
 
 
-'''Calculate surface roughness using a mesh'''
 def get_roughness(obj):
+    """Calculate surface roughness using mesh."""
     verts, faces, _, _ = measure.marching_cubes(
         obj * 255.,
         method='lewiner',
     )
-    mesh = trimesh.Trimesh(vertices = verts,faces=faces,process=False)
+    mesh = trimesh.Trimesh(vertices=verts, faces=faces, process=False)
     smesh = trimesh.smoothing.filter_humphrey(mesh)
 
     # Additional conversion requird since we are getting
