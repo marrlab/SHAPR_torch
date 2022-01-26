@@ -66,24 +66,27 @@ def get_roughness(obj):
     return roughness
 
 
-def swarmplot(data, label):
+def swarmplot(data, label, ax):
     """Create swarmplot with specific label."""
-    fig, ax = plt.subplots(figsize=(5, 6))
     ax = sns.violinplot(
-        data=data,
+        x=data,
         showfliers=False,
         color='lightgray',
         boxprops={'facecolor': 'None'},
-        orient='h'
+        orient='h',
+        ax=ax
     )
 
-    ax = sns.swarmplot(data=data, color='.25', size=1.5, orient='h')
-    plt.xlabel(label, size=15)
-    plt.xlim(-0.01, 1.01)
-    plt.xticks(size=15)
-    plt.locator_params(axis='x', nbins=4)
-    plt.tight_layout()
-    plt.grid(visible=False)
+    ax = sns.swarmplot(
+        x=data,
+        color='.25',
+        size=1.5,
+        orient='h',
+        ax=ax
+    )
+
+    ax.set_xlabel(label, size=15)
+    ax.set_xlim(-0.01, 1.01)
 
 
 if __name__ == '__main__':
@@ -102,7 +105,7 @@ if __name__ == '__main__':
     filenames = sorted(os.listdir(args.SOURCE))
     processed = []
 
-    for filename in tqdm(filenames[:10], desc='File'):
+    for filename in tqdm(filenames, desc='File'):
         source = imread(os.path.join(args.SOURCE, filename)) / 255.0
         target = np.squeeze(
             norm_thres(np.nan_to_num(
@@ -131,11 +134,14 @@ if __name__ == '__main__':
     print(len(iou))
     print(np.mean(iou) * 100, np.std(iou) * 100)
 
-    swarmplot(1 - np.asarray(iou), '1 - IoU')
-    swarmplot(volume, 'Volume error')
-    swarmplot(surface, 'Surface error')
-    swarmplot(roughness, 'Roughness error')
+    fig, axes = plt.subplots(nrows=4, squeeze=True, figsize=(5, 6))
 
+    swarmplot(1 - np.asarray(iou), '1 - IoU', axes[0])
+    swarmplot(volume, 'Volume error', axes[1])
+    swarmplot(surface, 'Surface error', axes[2])
+    swarmplot(roughness, 'Roughness error', axes[3])
+
+    plt.tight_layout()
     plt.show()
 
 ########################################################################
