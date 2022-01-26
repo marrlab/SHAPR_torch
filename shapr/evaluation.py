@@ -7,7 +7,6 @@ from tqdm import tqdm
 
 import numpy as np
 from skimage.io import imread, imsave
-from skimage.measure import label, regionprops
 from skimage import measure
 import trimesh
 import matplotlib.pyplot as plt
@@ -74,10 +73,34 @@ def get_roughness(obj):
     )
     mesh = trimesh.Trimesh(vertices = verts,faces=faces,process=False)
     smesh = trimesh.smoothing.filter_humphrey(mesh)
-    return np.mean(np.sqrt((np.sum((verts-smesh.vertices)**2))))
+
+    # Additional conversion requird since we are getting
+    # a `TrackedArray` that does not play nice with SNS.
+    roughness = np.mean(np.sqrt((np.sum((verts-smesh.vertices)**2))))
+    roughness = np.asarray(roughness)
+
+    return roughness
 
 
-'''Loop over files to obtain error metrics'''
+def swarmplot(data, label):
+    """Create swarmplot with specific label."""
+    fig, ax = plt.subplots(figsize=(5, 6))
+    ax = sns.violinplot(
+        data=data,
+        showfliers=False,
+        color='lightgray',
+        boxprops={'facecolor': 'None'},
+        orient='h'
+    )
+
+    ax = sns.swarmplot(data=data, color='.25', size=1.5, orient='h')
+    plt.xlabel(label, size=15)
+    plt.xlim(-0.01, 1.01)
+    plt.xticks(size=15)
+    plt.locator_params(axis='x', nbins=4)
+    plt.tight_layout()
+    plt.grid(b=None)
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -87,7 +110,6 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
-
     iou = []
     volume = []
     surface = []
@@ -96,7 +118,7 @@ if __name__ == '__main__':
     filenames = sorted(os.listdir(args.SOURCE))
     processed = []
 
-    for filename in tqdm(filenames, desc='File'):
+    for filename in tqdm(filenames[:10], desc='File'):
         source = imread(os.path.join(args.SOURCE, filename)) / 255.0
         target = np.squeeze(
             norm_thres(np.nan_to_num(
@@ -106,125 +128,38 @@ if __name__ == '__main__':
         )
 
         if np.mean(source) > 0.1:
-            #iou.append(IoU(groundtruth, data))
-            #volume.append(np.abs(np.sum(data)-np.sum(groundtruth))/np.sum(groundtruth))
+            iou.append(IoU(source, target))
+            volume.append(
+                np.abs(np.sum(target) - np.sum(source)) / np.sum(source)
+            )
 
-            #gt_surface = get_surface(groundtruth)
-            #surface.append(np.abs(get_surface(data) -gt_surface )/gt_surface)
+            source_surface = get_surface(source)
+            surface.append(
+                np.abs(get_surface(target) - source_surface) / source_surface
+            )
 
-            #gt_roughness = get_roughness(groundtruth)
-            #roughness.append(np.abs(get_roughness(data)-gt_roughness)/gt_roughness)
+            source_roughness = get_roughness(source)
+            roughness.append(
+                np.abs(get_roughness(target) - source_roughness)
+                / source_roughness
+            )
 
-            #fname.append(file)
+            print(type(source_roughness))
+            print(dir(source_roughness))
 
-            pass
+    print(len(iou))
+    print(np.mean(iou) * 100, np.std(iou) * 100)
 
-    raise 'heck'
+    swarmplot(1 - np.asarray(iou), '1 - IoU')
+    swarmplot(volume, 'Volume error')
+    swarmplot(surface, 'Surface error')
+    swarmplot(roughness, 'Roughness error')
 
-# In[148]:
+    plt.show()
 
-
-'''Plot 1-IoU'''
-print(len(IoU_tf))
-print(np.mean(IoU_tf)*100, np.std(IoU_tf)*100)
-print(np.mean(IoU_pytorch)*100,np.std(IoU_pytorch)*100)
-print(wilcoxon(IoU_pytorch, IoU_tf))
-
-IoU_pytorch_inv = [1.-i for i in IoU_pytorch]
-IoU_tf_inv = [1.-i for i in IoU_tf]
-
-plt.figure(figsize =(5,6))
-ax = sns.violinplot(data = [IoU_tf_inv, IoU_pytorch_inv], 
-            showfliers=False,color='lightgray', boxprops={'facecolor':'None'}, orient = "h")
-ax = sns.swarmplot(data = [IoU_tf_inv, IoU_pytorch_inv],color=".25", size =1.5, orient = "h")
-plt.xlabel('IoU', size = 15)
-plt.yticks([0,1],["TF", "pytorch"],size = 15)
-plt.xticks(size = 15)
-#plt.xlim(-0.01,0.99)
-plt.locator_params(axis='x', nbins=4)
-plt.tight_layout()
-plt.grid(b=None)
-plt.grid(b=None)
-
-plt.show()
-
-
-# In[149]:
-
-
-'''Plot volume error'''
-print(len(volume_pytorch))
-print(np.mean(volume_tf)*100, np.std(volume_tf)*100)
-print(np.mean(volume_pytorch)*100,np.std(volume_pytorch)*100 )
-print(wilcoxon(volume_tf, volume_pytorch))
-
-plt.figure(figsize =(5,6))
-ax = sns.violinplot(data = [volume_tf, volume_pytorch], 
-            showfliers=False,color='lightgray', boxprops={'facecolor':'None'}, orient = "h")
-ax = sns.swarmplot(data = [volume_tf, volume_pytorch],color=".25", size =1.5, orient = "h")
-plt.xlabel('Volume error [%]', size = 15)
-plt.yticks([0,1],["TF", "pytorch"],size = 15)
-plt.xticks(size = 15)
-plt.xlim(-0.01,1.1)
-plt.locator_params(axis='x', nbins=4)
-plt.tight_layout()
-plt.grid(b=None)
-plt.grid(b=None)
-
-plt.show()
-
-
-# In[150]:
-
-
-'''Plot surface error'''
-print(np.mean(surface_tf)*100, np.std(surface_tf)*100)
-print(np.mean(surface_pytorch)*100,np.std(surface_pytorch)*100 )
-print(wilcoxon(volume_tf, volume_pytorch))
-
-plt.figure(figsize =(5,6))
-ax = sns.violinplot(data = [surface_tf, surface_pytorch], 
-            showfliers=False,color='lightgray', boxprops={'facecolor':'None'}, orient = "h")
-ax = sns.swarmplot(data = [surface_tf, surface_pytorch],color=".25", size =1.5, orient = "h")
-plt.xlabel('Surface error [%]', size = 15)
-plt.yticks([0,1],["TF", "pytorch"],size = 15)
-plt.xticks(size = 15)
-plt.xlim(-0.01,1.1)
-plt.locator_params(axis='x', nbins=4)
-plt.tight_layout()
-plt.grid(b=None)
-plt.grid(b=None)
-
-plt.show()
-
-
-# In[151]:
-
-
-'''Plot surface roughness error'''
-print(len(roughness_pytorch))
-print(np.mean(roughness_tf)*100, np.std(roughness_tf)*100)
-print(np.mean(roughness_pytorch)*100,np.std(roughness_pytorch)*100 )
-print(wilcoxon(volume_tf, volume_pytorch))
-
-plt.figure(figsize =(5,6))
-ax = sns.violinplot(data = [roughness_tf, roughness_pytorch], 
-            showfliers=False,color='lightgray', boxprops={'facecolor':'None'}, orient = "h")
-ax = sns.swarmplot(data = [roughness_tf, roughness_pytorch],color=".25", size =1.5, orient = "h")
-plt.xlabel('Roughness error [%]', size = 15)
-plt.yticks([0,1],["TF", "pytorch"],size = 15)
-plt.xticks(size = 15)
-plt.xlim(-0.01,1.1)
-plt.locator_params(axis='x', nbins=4)
-plt.tight_layout()
-plt.grid(b=None)
-plt.grid(b=None)
-
-plt.show()
-
-
-# In[152]:
-
+########################################################################
+# HIC SVNT DRACONES
+########################################################################
 
 mask_path = "/media/dominik/LaCie/SHAPR_pytorch/Organoid/mask/"
 
@@ -242,34 +177,5 @@ for index, file in enumerate(files):
 
     mask_area.append(np.sum(mask))
 
-
-# In[153]:
-
-
 plt.scatter(mask_area, volume, s = 1)
 plt.show()
-
-
-# In[ ]:
-
-
-
-
-
-# In[ ]:
-
-
-
-
-
-# In[ ]:
-
-
-
-
-
-# In[ ]:
-
-
-
-
