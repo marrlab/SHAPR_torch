@@ -22,3 +22,4 @@ torchvision = "^0.11.2"
 wandb = "^0.12.9"
 torch-topological = {path = "../pytorch-topological", develop=true}
 pandas = "^1.4.0"
+vedo = "^2022.0.1"
