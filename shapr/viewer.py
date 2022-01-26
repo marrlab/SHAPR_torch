@@ -24,8 +24,7 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
-    filename = args.INPUT
-    image_data = import_image(filename)
+    image_data = import_image(args.INPUT).squeeze()
 
     volume = Volume(image_data)
 
