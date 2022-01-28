@@ -252,6 +252,7 @@ class LightningSHAPRoptimization(pl.LightningModule):
     def __init__(self, settings, cv_train_filenames, cv_val_filenames):
         super(LightningSHAPRoptimization, self).__init__()
 
+        self.random_seed = settings.random_seed
         self.path = settings.path
         self.cv_train_filenames = cv_train_filenames
         self.cv_val_filenames = cv_val_filenames
@@ -354,17 +355,17 @@ class LightningSHAPRoptimization(pl.LightningModule):
         self.log("val_loss", loss)
 
     def train_dataloader(self):
-        dataset = SHAPRDataset(self.path, self.cv_train_filenames)
+        dataset = SHAPRDataset(self.path, self.cv_train_filenames, self.random_seed)
         train_loader = DataLoader(dataset, batch_size=self.batch_size, pin_memory=True, shuffle=True)
         return train_loader
 
     def val_dataloader(self):
-        dataset = SHAPRDataset(self.path, self.cv_val_filenames)
+        dataset = SHAPRDataset(self.path, self.cv_val_filenames, self.random_seed)
         val_loader = DataLoader(dataset, batch_size=self.batch_size, pin_memory=True, shuffle=True)
         return val_loader
 
     def test_dataloader(self):
-        dataset = SHAPRDataset(self.path, self.cv_test_filenames)
+        dataset = SHAPRDataset(self.path, self.cv_test_filenames, self.random_seed)
         test_loader = DataLoader(dataset)
         return test_loader
 
@@ -373,6 +374,7 @@ class LightningSHAPR_GANoptimization(pl.LightningModule):
     def __init__(self, settings, cv_train_filenames, cv_val_filenames):
         super(LightningSHAPR_GANoptimization, self).__init__()
 
+        self.random_seed = settings.random_seed
         self.path = settings.path
         self.cv_train_filenames = cv_train_filenames
         self.cv_val_filenames = cv_val_filenames
@@ -414,17 +416,17 @@ class LightningSHAPR_GANoptimization(pl.LightningModule):
         #return (self.MSEloss(y_pred, y_true) + F.binary_cross_entropy(y_pred, y_true))/2
 
     def train_dataloader(self):
-        dataset = SHAPRDataset(self.path, self.cv_train_filenames)
+        dataset = SHAPRDataset(self.path, self.cv_train_filenames, self.random_seed)
         train_loader = DataLoader(dataset, batch_size=self.batch_size, pin_memory=True, shuffle=True)
         return train_loader
 
     def val_dataloader(self):
-        dataset = SHAPRDataset(self.path, self.cv_val_filenames)
+        dataset = SHAPRDataset(self.path, self.cv_val_filenames, self.random_seed)
         val_loader = DataLoader(dataset, batch_size=self.batch_size, pin_memory=True, shuffle=True)
         return val_loader
 
     def test_dataloader(self):
-        dataset = SHAPRDataset(self.path, self.cv_test_filenames)
+        dataset = SHAPRDataset(self.path, self.cv_test_filenames, self.random_seed)
         test_loader = DataLoader(dataset)
         return test_loader
 

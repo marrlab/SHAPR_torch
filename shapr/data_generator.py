@@ -6,9 +6,9 @@ import pytorch_lightning as pl
 from torchvision import transforms
 from torch.utils.data import DataLoader, random_split
 
-def augmentation(obj, img):
-    random.seed(settings.random_seed)
-    np.random.seed(settings.random_seed)
+def augmentation(obj, img, random_seed):
+    random.seed(random_seed)
+    np.random.seed(random_seed)
     if random.choice([True, True, False]) == True:
         obj = np.flip(obj, len(np.shape(obj)) - 1).copy()
         img = np.flip(img, len(np.shape(img)) - 1).copy()
@@ -49,9 +49,10 @@ The 2D mask and the 2D image will be multiplied pixel-wise to remove the backgro
 """
 
 class SHAPRDataset(Dataset):
-    def __init__(self, path, filenames):
+    def __init__(self, path, filenames, random_seed):
         self.path = path
         self.filenames = filenames
+        self.random_seed = random_seed
 
     def __len__(self):
         return len(self.filenames)
@@ -63,7 +64,7 @@ class SHAPRDataset(Dataset):
         msk_bf = np.zeros((2, int(np.shape(img)[0]), int(np.shape(img)[1])))
         msk_bf[0, :, :] = img
         msk_bf[1, :, :] = bf * img
-        obj, msk_bf = augmentation(obj, msk_bf)
+        obj, msk_bf = augmentation(obj, msk_bf, self.random_seed)
         mask_bf = msk_bf[:, np.newaxis, ...]
         obj = obj[np.newaxis,:,:,:]
         return torch.from_numpy(mask_bf).float(), torch.from_numpy(obj).float()
