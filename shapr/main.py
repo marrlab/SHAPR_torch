@@ -5,7 +5,6 @@ from shapr.data_generator import *
 import torch.optim as optim
 from tqdm import tqdm
 from torch.utils.data import DataLoader, random_split
-from evaluate import evaluate
 from pathlib import Path
 import wandb
 import logging
@@ -15,6 +14,8 @@ from data_generator import SHAPRDataset
 from sklearn.model_selection import train_test_split
 from pytorch_lightning.callbacks import ModelCheckpoint, EarlyStopping
 import glob
+from pytorch_lightning import loggers as pl_loggers
+import torch
 
 PARAMS = {"num_filters": 10,
       "dropout": 0.
@@ -60,9 +61,10 @@ def run_train(amp: bool = False):
             save_top_k=3,
             mode="min",
         )
-        early_stopping_callback = EarlyStopping(monitor='val_loss', patience=8)
+        early_stopping_callback = EarlyStopping(monitor='val_loss', patience=5)
+        tb_logger = pl_loggers.TensorBoardLogger("logs/")
         SHAPRmodel = LightningSHAPRoptimization(settings, cv_train_filenames, cv_val_filenames)
-        SHAPR_trainer = pl.Trainer(max_epochs=settings.epochs_SHAPR, callbacks=[checkpoint_callback, early_stopping_callback], gpus = 1)
+        SHAPR_trainer = pl.Trainer(max_epochs=settings.epochs_SHAPR, callbacks=[checkpoint_callback, early_stopping_callback], logger=tb_logger, gpus = 1)
         SHAPR_trainer.fit(model= SHAPRmodel)
         torch.save({
             'state_dict': SHAPRmodel.state_dict(),
@@ -82,8 +84,7 @@ def run_train(amp: bool = False):
         )
 
         SHAPR_GANmodel = LightningSHAPR_GANoptimization(settings, cv_train_filenames, cv_val_filenames)
-
-        SHAPR_GAN_trainer = pl.Trainer(callbacks=[early_stopping_callback, checkpoint_callback], max_epochs=settings.epochs_cSHAPR, gpus = 1)
+        SHAPR_GAN_trainer = pl.Trainer(callbacks=[early_stopping_callback, checkpoint_callback], max_epochs=settings.epochs_cSHAPR,logger=tb_logger, gpus = 1)
         SHAPR_GAN_trainer.fit(model=SHAPR_GANmodel)
 
         """

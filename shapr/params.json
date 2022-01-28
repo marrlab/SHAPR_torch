@@ -1,8 +1,8 @@
 {
-    "path": "/media/dominik/LaCie/SHAPR_pytorch/Organoid/",
-    "result_path": "/media/dominik/LaCie/SHAPR_pytorch/Organoid/results/",
+    "path": "/media/dominik/LaCie/SHAPR_pytorch/Blood_cell/",
+    "result_path": "/media/dominik/LaCie/SHAPR_pytorch/Blood_cell/results/",
     "random_seed" : 0,
-    "batch_size": 5,
-    "epochs_SHAPR": 10,
-    "epochs_cSHAPR": 10
+    "batch_size": 10,
+    "epochs_SHAPR":100,
+    "epochs_cSHAPR": 100
 }

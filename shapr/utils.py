@@ -8,6 +8,7 @@ import random
 from sklearn.model_selection import KFold
 from sklearn.model_selection import train_test_split
 import time
+import torch
 
 
 # Mohammad: Does scikit-image imread take care of all type of image?
