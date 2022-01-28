@@ -23,3 +23,6 @@ wandb = "^0.12.9"
 torch-topological = {path = "../pytorch-topological", develop=true}
 pandas = "^1.4.0"
 vedo = "^2022.0.1"
+jupyter = "^1.0.0"
+trimesh = "^3.9.42"
+seaborn = "^0.11.2"
