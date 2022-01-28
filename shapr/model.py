@@ -8,7 +8,6 @@ from metrics import dice_loss as dice_loss
 import torchvision
 from collections import OrderedDict
 import os
-from topologylayer.nn import LevelSetLayer2D, TopKBarcodeLengths
 
 from torch_topological.nn import CubicalComplex
 from torch_topological.nn import WassersteinDistance
