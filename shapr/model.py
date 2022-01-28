@@ -276,6 +276,7 @@ class LightningSHAPRoptimization(pl.LightningModule):
         self.topo_loss = WassersteinDistance(q=2)
         self.topo_lambda = settings.topo_lambda
         self.topo_interp = settings.topo_interp
+        self.topo_feat_d = settings.topo_feat_d
 
     def forward(self, x):
         return self.shapr(x)
@@ -314,15 +315,13 @@ class LightningSHAPRoptimization(pl.LightningModule):
         pers_info_pred = self.cubical_complex(pred_obj_.squeeze())
         pers_info_true = self.cubical_complex(true_obj_.squeeze())
 
-        # TODO: Make filtering configurable; it is possible that
-        # higher-order topological features are not useful.
         pers_info_pred = [
-            [x__ for x__ in x_ if x__.dimension == 2]
+            [x__ for x__ in x_ if x__.dimension == self.topo_feat_d]
             for x_ in pers_info_pred
         ]
 
         pers_info_true = [
-            [x__ for x__ in x_ if x__.dimension == 2]
+            [x__ for x__ in x_ if x__.dimension == self.topo_feat_d]
             for x_ in pers_info_true
         ]
 

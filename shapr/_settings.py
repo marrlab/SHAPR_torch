@@ -56,6 +56,7 @@ class SHAPRConfig(FrozenClass):
         epochs_cSHAPR="epochs_cSHAPR",
         topo_lambda="__topo_lambda",  # strength of topological regularisation
         topo_interp="__topo_interp",  # size of downsampled input data
+        topo_feat_d='__topo_feat_d',  # dim. of topological features to use
     )
 
     __config_param_default = dict(
@@ -68,6 +69,7 @@ class SHAPRConfig(FrozenClass):
         epochs_cSHAPR = 30,
         topo_lambda=0.0,
         topo_interp=0,
+        topo_feat_d=2,
     )
 
     def __init__(self, params=None):
