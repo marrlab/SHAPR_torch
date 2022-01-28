@@ -10,11 +10,11 @@ def augmentation(obj, img):
     random.seed(settings.random_seed)
     np.random.seed(settings.random_seed)
     if random.choice([True, True, False]) == True:
-        obj = np.flip(obj, len(np.shape(obj)) - 1)
-        img = np.flip(img, len(np.shape(img)) - 1)
+        obj = np.flip(obj, len(np.shape(obj)) - 1).copy()
+        img = np.flip(img, len(np.shape(img)) - 1).copy()
     if random.choice([True, True, False]) == True:
-        obj = np.flip(obj, len(np.shape(obj)) - 2)
-        img = np.flip(img, len(np.shape(img)) - 2)
+        obj = np.flip(obj, len(np.shape(obj)) - 2).copy()
+        img = np.flip(img, len(np.shape(img)) - 2).copy()
 
     if random.choice([True, True, False]) == True:
         angle = np.random.choice(int(360 * 100)) / 100
@@ -57,17 +57,13 @@ class SHAPRDataset(Dataset):
         return len(self.filenames)
 
     def __getitem__(self, idx):
-        #print("load file", self.filenames[idx])
         obj = import_image(os.path.join(self.path, "obj", self.filenames[idx])) / 255.
         img = import_image(os.path.join(self.path, "mask", self.filenames[idx])) / 255.
         bf = import_image(os.path.join(self.path, "image", self.filenames[idx])) / 255.
-        #mask_bf = np.zeros((2, 1, int(np.shape(img)[0]), int(np.shape(img)[1])))
         msk_bf = np.zeros((2, int(np.shape(img)[0]), int(np.shape(img)[1])))
-        #msk_bf[0, 0, :, :] = img
-        #msk_bf[1, 0, :, :] = bf * img
         msk_bf[0, :, :] = img
         msk_bf[1, :, :] = bf * img
-        #obj, mask_bf = augmentation(obj, msk_bf)
+        obj, msk_bf = augmentation(obj, msk_bf)
         mask_bf = msk_bf[:, np.newaxis, ...]
         obj = obj[np.newaxis,:,:,:]
         return torch.from_numpy(mask_bf).float(), torch.from_numpy(obj).float()

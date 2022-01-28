@@ -4,10 +4,11 @@ import torch.nn.functional as F
 import pytorch_lightning as pl
 from data_generator import SHAPRDataset
 from torch.utils.data import DataLoader, random_split
-from metrics import SoftDiceLoss
+from metrics import dice_loss as dice_loss
 import torchvision
 from collections import OrderedDict
 import os
+from topologylayer.nn import LevelSetLayer2D, TopKBarcodeLengths
 
 from torch_topological.nn import CubicalComplex
 from torch_topological.nn import WassersteinDistance
@@ -178,14 +179,14 @@ class Discriminator(nn.Module):
         n_filters = 10
         self.conv1 = EncoderBlock(1, n_filters)
         self.down1 = Down222()
-        self.conv2 = EncoderBlock(n_filters, n_filters)
+        self.conv2 = EncoderBlock(n_filters, n_filters*2)
         self.down2 = Down222()
-        self.conv3 = EncoderBlock(n_filters, n_filters)
+        self.conv3 = EncoderBlock(n_filters*2, n_filters*4)
         self.down3 = Down222()
-        self.conv4 = EncoderBlock(n_filters, n_filters)
+        self.conv4 = EncoderBlock(n_filters*4, n_filters*8)
         self.down4 = Down222()
-        self.conv5 = EncoderBlock(n_filters, n_filters)
-        self.discout = DiscriminatorOut(n_filters, 1)
+        self.conv5 = EncoderBlock(n_filters*8, n_filters*16)
+        self.discout = DiscriminatorOut(n_filters*16, 1)
 
     def forward(self, x_in):
         x = self.conv1(x_in)
@@ -264,7 +265,7 @@ class LightningSHAPRoptimization(pl.LightningModule):
 
         # Defining loss
         self.ce_loss = nn.CrossEntropyLoss()
-        self.dice_loss = SoftDiceLoss(weight=None)
+        self.dice_loss = dice_loss
 
         # Required for topological feature calculation. We want cubical
         # complexes because they handle images intrinsically.
@@ -280,20 +281,19 @@ class LightningSHAPRoptimization(pl.LightningModule):
         return self.shapr(x)
 
     def configure_optimizers(self):
-        return torch.optim.Adam(self.parameters(), lr=1e-3)
+        lr = 0.01
+        b1 = 0.5
+        b2 = 0.999
+        return torch.optim.Adam(self.shapr.parameters(), lr=lr)
 
     def MSEloss(self, y_true, y_pred):
         MSE = torch.nn.MSELoss()
         return MSE(y_true, y_pred)
 
     def binary_crossentropy_Dice(self, y_pred, y_true):
-        softmaxed_pred = torch.nn.functional.softmax(y_pred, dim=1)
-        cross_entropy_loss = nn.CrossEntropyLoss()
-        ce_loss = self.ce_loss(y_pred, y_true)
-        dice_loss = self.dice_loss(softmaxed_pred, y_true.long())
-        total_loss = (ce_loss + dice_loss) / 2
-
-        return self.MSEloss(y_pred, y_true) #+ cross_entropy_loss(y_pred, y_true)
+        #return self.dice_loss(y_pred, y_true)
+        return (self.dice_loss(y_pred, y_true) + F.binary_cross_entropy(y_pred, y_true)) / 2
+        #return (self.MSEloss(y_pred, y_true) + F.binary_cross_entropy(y_pred, y_true)) / 2
 
     def topological_step(self, pred_obj, true_obj):
         """Calculate topological features and adjust loss."""
@@ -337,8 +337,8 @@ class LightningSHAPRoptimization(pl.LightningModule):
 
     def training_step(self, train_batch, batch_idx):
         images, true_obj = train_batch
-        pred = self.forward(images)
-        loss = self.binary_crossentropy_Dice(true_obj, pred)
+        pred = self(images)
+        loss = self.binary_crossentropy_Dice(pred, true_obj)
 
         loss += self.topo_lambda * self.topological_step(pred, true_obj)
 
@@ -388,18 +388,17 @@ class LightningSHAPR_GANoptimization(pl.LightningModule):
             new_checkpoint = OrderedDict()
             for k, v in checkpoint['state_dict'].items():
                 if 'shapr' in k:
-                    name = k[6:]  # remove `module.`
+                    name = k[6:]  # remove `shapr.`
                 else:
                     name = k
                 new_checkpoint[name] = v
 
-
             self.shapr.load_state_dict(new_checkpoint)
 
         self.discriminator = Discriminator()
-        self.lr = 0.01
-
+        self.lr = 0.0001
         self.loss = nn.CrossEntropyLoss()
+        self.dice_loss = dice_loss
 
     def forward(self, z):
         return self.shapr(z)
@@ -412,9 +411,8 @@ class LightningSHAPR_GANoptimization(pl.LightningModule):
         return MSE(y_true, y_pred)
 
     def binary_crossentropy_Dice(self, y_pred, y_true):
-        cross_entropy_loss = nn.CrossEntropyLoss()
-        #ToDo replace MSE with dice loss
-        return self.MSEloss(y_pred, y_true) #+ cross_entropy_loss(y_pred, y_true)
+        return (self.dice_loss(y_pred, y_true) + F.binary_cross_entropy(y_pred, y_true)) / 2
+        #return (self.MSEloss(y_pred, y_true) + F.binary_cross_entropy(y_pred, y_true))/2
 
     def train_dataloader(self):
         dataset = SHAPRDataset(self.path, self.cv_train_filenames)
@@ -433,20 +431,17 @@ class LightningSHAPR_GANoptimization(pl.LightningModule):
 
     def training_step(self, train_batch, batch_idx, optimizer_idx):
         images, true_obj = train_batch
-        pred = self.forward(images)
+        valid = torch.ones(images.size(0), 1)
+        valid = valid.type_as(images)
 
-        # train generator
+        fake = torch.zeros(images.size(0), 1)
+        fake = fake.type_as(images)
+
         if optimizer_idx == 0:
-            valid = torch.ones(images.size(0), 1)
-            valid = valid.type_as(images)
-            #train supervised
-            supervised_loss = self.binary_crossentropy_Dice(true_obj, pred)
-            # train with adversarial loss
-            disc_pred = self.discriminator(pred)
-            g_loss = self.adversarial_loss(disc_pred, valid)
-            #weight the supervised loss by a factor 10 heavier
-            loss = (10 * supervised_loss + g_loss) / 11
-
+            supervised_loss = self.binary_crossentropy_Dice(self(images), true_obj)
+            g_loss = self.adversarial_loss(self.discriminator(self(images)), valid)
+            print("supervised loss:", supervised_loss.item(), "gan loss:", g_loss.item())
+            loss = (10*supervised_loss + g_loss) / 11
             tqdm_dict = {'g_loss': loss}
             output = OrderedDict({
                 'loss': loss,
@@ -458,20 +453,15 @@ class LightningSHAPR_GANoptimization(pl.LightningModule):
         # train discriminator
         if optimizer_idx == 1:
             # test discriminator on real images
-            valid = torch.ones(images.size(0), 1)
-            valid = valid.type_as(images)
-            disc_true = self.discriminator(true_obj)
-            real_loss = self.adversarial_loss(disc_true, valid)
+            real_loss = self.adversarial_loss(self.discriminator(true_obj), valid)
 
             # how well can it label as fake?
-            fake = torch.zeros(images.size(0), 1)
-            fake = fake.type_as(images)
-            disc_pred = self.discriminator(true_obj)
-            fake_loss = self.adversarial_loss(disc_pred.detach(), fake)
+            fake_loss = self.adversarial_loss(self.discriminator(self(images).detach()), fake)
 
             # test discriminator on fake images
             loss = (real_loss + fake_loss) / 2
             tqdm_dict = {'d_loss': loss}
+            print("discriminator loss:", loss.item())
             output = OrderedDict({
                 'loss': loss,
                 'progress_bar': tqdm_dict,
@@ -481,18 +471,19 @@ class LightningSHAPR_GANoptimization(pl.LightningModule):
 
     def validation_step(self, val_batch, batch_idx):
         images, true_obj = val_batch
-        pred = self.forward(images)
-        loss = self.binary_crossentropy_Dice(true_obj, pred)
+        loss = self.binary_crossentropy_Dice(true_obj, self(images))
         self.log("val_loss", loss)
 
     def configure_optimizers(self):
-        lr_1 = 0.01
+        lr_1 = 0.001
         b1_1 = 0.5
         b2_1 = 0.999
-        lr_2 = 0.001 #0.00000005
+        lr_2 = 0.0001
         b1_2 = 0.5
         b2_2 = 0.999
 
-        opt_g = torch.optim.Adam(self.shapr.parameters(), lr=lr_1, betas=(b1_1, b2_1))
-        opt_d = torch.optim.Adam(self.discriminator.parameters(), lr=lr_2, betas=(b1_2, b2_2))
-        return [opt_g, opt_d], []
+        opt_s = torch.optim.Adam(self.shapr.parameters())#, lr=0.001)
+        opt_d = torch.optim.Adam(self.discriminator.parameters(),lr = 0.00005)# lr=0.00000005)
+        #opt_g = torch.optim.Adam(self.shapr.parameters(), lr=lr_1, betas=(b1_1, b2_1))
+        #opt_d = torch.optim.Adam(self.discriminator.parameters(), lr=lr_2, betas=(b1_2, b2_2))
+        return [opt_s, opt_d], []
