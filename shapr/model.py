@@ -298,6 +298,12 @@ class LightningSHAPRoptimization(pl.LightningModule):
 
     def topological_step(self, pred_obj, true_obj):
         """Calculate topological features and adjust loss."""
+        # Check whether there's anything to do here. This makes it
+        # possible to disable the calculation of topological features
+        # altogether.
+        if self.topo_lambda == 0.0:
+            return 0.0
+
         if self.topo_interp != 0:
             size = (self.topo_interp, ) * 3
             pred_obj_ = nn.functional.interpolate(input=pred_obj, size=size)
@@ -331,7 +337,7 @@ class LightningSHAPRoptimization(pl.LightningModule):
         ])
 
         self.log("topo_loss", topo_loss.mean()),
-        return topo_loss.mean()
+        return self.topo_lambda * topo_loss.mean()
 
 
     def training_step(self, train_batch, batch_idx):
@@ -339,7 +345,7 @@ class LightningSHAPRoptimization(pl.LightningModule):
         pred = self(images)
         loss = self.binary_crossentropy_Dice(pred, true_obj)
 
-        loss += self.topo_lambda * self.topological_step(pred, true_obj)
+        loss += self.topological_step(pred, true_obj)
 
         self.log("train_loss", loss)
         return loss
@@ -349,7 +355,7 @@ class LightningSHAPRoptimization(pl.LightningModule):
         pred = self.forward(images)
         loss = self.binary_crossentropy_Dice(true_obj, pred)
 
-        loss += self.topo_lambda * self.topological_step(pred, true_obj)
+        loss += self.topological_step(pred, true_obj)
 
         self.log("val_loss", loss)
 
