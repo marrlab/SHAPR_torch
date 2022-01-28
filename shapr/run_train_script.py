@@ -1,2 +1,18 @@
-from shapr import settings, run_train, run_evaluation
-run_train()
+"""Run training with optional external parameters."""
+
+import argparse
+
+from shapr import run_train
+
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        '-p', '--params',
+        type=str,
+        default=None,
+        help='Config file'
+    )
+
+    args = parser.parse_args()
+    run_train(params=args.params)

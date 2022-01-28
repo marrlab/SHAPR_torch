@@ -1,5 +1,5 @@
 from shapr.utils import *
-from shapr._settings import settings
+from shapr._settings import SHAPRConfig
 from shapr.data_generator import *
 #from shapr.model import netSHAPR, netDiscriminator
 import torch.optim as optim
@@ -30,8 +30,9 @@ The filenames of corresponding files in the obj, mask and image ordner are expet
 """
 
 
-def run_train(amp: bool = False):
+def run_train(amp: bool = False, params=None):
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    settings = SHAPRConfig(params=params)
 
     # Handle GPU vs CPU selection
     if device == torch.device("cpu"):

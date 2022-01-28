@@ -70,16 +70,23 @@ class SHAPRConfig(FrozenClass):
         topo_interp=0,
     )
 
-    def __init__(self):
+    def __init__(self, params=None):
         for param, storing_param in self.__config_param_names.items():
             self.__setattr__(param, auto_property(storing_param))
         self._frozen()
 
         # setting initial values.
         self.set_attributes_with_keys(self.__config_param_default)
-        
-        if os.path.isfile(os.path.join(os.path.dirname(__file__), 'params.json')):
-            self.read_json(os.path.join(os.path.dirname(__file__), 'params.json'))
+
+        if params is None:
+            params_fname = os.path.join(
+                os.path.dirname(__file__), 'params.json'
+            )
+
+            if os.path.isfile(params_fname):
+                self.read_json(params_fname)
+        else:
+            self.read_json(params)
 
     def __str__(self):
         s = "------ settings parameters ------\n"
@@ -92,7 +99,3 @@ class SHAPRConfig(FrozenClass):
             _initial_values = json.load(f)
         _initial_values = {_k: _v for (_k, _v) in _initial_values.items() if not _k.startswith("_comment")}
         self.set_attributes_with_keys(_initial_values)
-
-settings = SHAPRConfig()
-
-

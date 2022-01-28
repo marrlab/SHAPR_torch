@@ -1,5 +1,4 @@
 import numpy as np
-from shapr._settings import settings
 from shapr.utils import *
 from shapr.metrics import *
 from torch.utils.data import Dataset
