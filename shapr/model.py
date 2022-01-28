@@ -352,8 +352,8 @@ class LightningSHAPRoptimization(pl.LightningModule):
 
     def validation_step(self, val_batch, batch_idx):
         images, true_obj = val_batch
-        pred = self.forward(images)
-        loss = self.binary_crossentropy_Dice(true_obj, pred)
+        pred = self(images)
+        loss = self.binary_crossentropy_Dice(pred, true_obj)
 
         loss += self.topological_step(pred, true_obj)
 
