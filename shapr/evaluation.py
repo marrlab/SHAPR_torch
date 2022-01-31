@@ -107,7 +107,7 @@ if __name__ == '__main__':
 
     filenames = sorted(os.listdir(args.SOURCE))
 
-    for filename in tqdm(filenames[:5], desc='File'):
+    for filename in tqdm(filenames, desc='File'):
         source = imread(os.path.join(args.SOURCE, filename)) / 255.0
 
         for target_ in args.TARGET:
@@ -128,7 +128,8 @@ if __name__ == '__main__':
 
                 source_surface = get_surface(source)
                 surface[name].append(
-                    np.abs(get_surface(target) - source_surface) / source_surface
+                    np.abs(get_surface(target) - source_surface)
+                    / source_surface
                 )
 
                 source_roughness = get_roughness(source)
