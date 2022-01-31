@@ -1,0 +1,28 @@
+[tool]
+[tool.poetry]
+name = "shapr"
+version = "0.0.2"
+license = "MIT"
+keywords = ["Computational", "Biology", "Deep", "Learning"]
+classifiers = ["Development Status :: 3 - Alpha", "Topic :: Scientific/Engineering :: Image Recognition", "License :: OSI Approved :: MIT License"]
+homepage = "https://github.com/marrlab/ShapeAE"
+authors = ["Dominik Waibel, Niklas Kiermeyer, Mohammad Mirkazemi <dominik.waibel@helmholtz-muenchen.de>"]
+description="SHAPR"
+
+
+[tool.poetry.dependencies]
+python = ">=3.9,<3.11"
+imageio = "*"
+torch = "*"
+scikit-image = "*"
+scikit-learn = "*"
+rising = "^0.2.2"
+pytorch-lightning = "^1.5.8"
+torchvision = "^0.11.2"
+wandb = "^0.12.9"
+torch-topological = {path = "../pytorch-topological", develop=true}
+pandas = "^1.4.0"
+vedo = "^2022.0.1"
+jupyter = "^1.0.0"
+trimesh = "^3.9.42"
+seaborn = "^0.11.2"

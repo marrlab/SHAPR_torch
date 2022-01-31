@@ -54,6 +54,9 @@ class SHAPRConfig(FrozenClass):
         batch_size="__batch_size",
         epochs_SHAPR="epochs_SHAPR",
         epochs_cSHAPR="epochs_cSHAPR",
+        topo_lambda="__topo_lambda",  # strength of topological regularisation
+        topo_interp="__topo_interp",  # size of downsampled input data
+        topo_feat_d='__topo_feat_d',  # dim. of topological features to use
     )
 
     __config_param_default = dict(
@@ -64,18 +67,28 @@ class SHAPRConfig(FrozenClass):
         batch_size = 6,
         epochs_SHAPR = 30,
         epochs_cSHAPR = 30,
+        topo_lambda=0.0,
+        topo_interp=0,
+        topo_feat_d=2,
     )
 
-    def __init__(self):
+    def __init__(self, params=None):
         for param, storing_param in self.__config_param_names.items():
             self.__setattr__(param, auto_property(storing_param))
         self._frozen()
 
         # setting initial values.
         self.set_attributes_with_keys(self.__config_param_default)
-        
-        if os.path.isfile(os.path.join(os.path.dirname(__file__), 'params.json')):
-            self.read_json(os.path.join(os.path.dirname(__file__), 'params.json'))
+
+        if params is None:
+            params_fname = os.path.join(
+                os.path.dirname(__file__), 'params.json'
+            )
+
+            if os.path.isfile(params_fname):
+                self.read_json(params_fname)
+        else:
+            self.read_json(params)
 
     def __str__(self):
         s = "------ settings parameters ------\n"
@@ -88,7 +101,3 @@ class SHAPRConfig(FrozenClass):
             _initial_values = json.load(f)
         _initial_values = {_k: _v for (_k, _v) in _initial_values.items() if not _k.startswith("_comment")}
         self.set_attributes_with_keys(_initial_values)
-
-settings = SHAPRConfig()
-
-

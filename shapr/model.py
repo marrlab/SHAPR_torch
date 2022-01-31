@@ -8,7 +8,9 @@ from metrics import dice_loss as dice_loss
 import torchvision
 from collections import OrderedDict
 import os
-from topologylayer.nn import LevelSetLayer2D, TopKBarcodeLengths
+
+from torch_topological.nn import CubicalComplex
+from torch_topological.nn import WassersteinDistance
 
 
 class EncoderBlock(nn.Module):
@@ -250,6 +252,7 @@ class LightningSHAPRoptimization(pl.LightningModule):
     def __init__(self, settings, cv_train_filenames, cv_val_filenames):
         super(LightningSHAPRoptimization, self).__init__()
 
+        self.random_seed = settings.random_seed
         self.path = settings.path
         self.cv_train_filenames = cv_train_filenames
         self.cv_val_filenames = cv_val_filenames
@@ -263,6 +266,17 @@ class LightningSHAPRoptimization(pl.LightningModule):
         # Defining loss
         self.ce_loss = nn.CrossEntropyLoss()
         self.dice_loss = dice_loss
+
+        # Required for topological feature calculation. We want cubical
+        # complexes because they handle images intrinsically.
+        #
+        #  TODO: Consider superlevel set filtrations?
+        #  TODO: Consider different weighting schemes for Wasserstein?
+        self.cubical_complex = CubicalComplex(dim=3)
+        self.topo_loss = WassersteinDistance(q=2)
+        self.topo_lambda = settings.topo_lambda
+        self.topo_interp = settings.topo_interp
+        self.topo_feat_d = settings.topo_feat_d
 
     def forward(self, x):
         return self.shapr(x)
@@ -282,31 +296,81 @@ class LightningSHAPRoptimization(pl.LightningModule):
         return (self.dice_loss(y_pred, y_true) + F.binary_cross_entropy(y_pred, y_true)) / 2
         #return (self.MSEloss(y_pred, y_true) + F.binary_cross_entropy(y_pred, y_true)) / 2
 
+    def topological_step(self, pred_obj, true_obj):
+        """Calculate topological features and adjust loss."""
+        # Check whether there's anything to do here. This makes it
+        # possible to disable the calculation of topological features
+        # altogether.
+        if self.topo_lambda == 0.0:
+            return 0.0
+
+        if self.topo_interp != 0:
+            size = (self.topo_interp, ) * 3
+            pred_obj_ = nn.functional.interpolate(input=pred_obj, size=size)
+            true_obj_ = nn.functional.interpolate(input=true_obj, size=size)
+
+        # No interpolation desired by client; use the original data set,
+        # thus making everything slower.
+        else:
+            pred_obj_ = pred_obj
+            true_obj_ = true_obj
+
+        # Calculate topological features of predicted 3D tensor and true
+        # 3D tensor. The `squeeze()` ensures that we are ignoring single
+        # dimensions such as channels.
+        pers_info_pred = self.cubical_complex(pred_obj_.squeeze())
+        pers_info_true = self.cubical_complex(true_obj_.squeeze())
+
+        pers_info_pred = [
+            [x__ for x__ in x_ if x__.dimension == self.topo_feat_d]
+            for x_ in pers_info_pred
+        ]
+
+        pers_info_true = [
+            [x__ for x__ in x_ if x__.dimension == self.topo_feat_d]
+            for x_ in pers_info_true
+        ]
+
+        topo_loss = torch.stack([
+            self.topo_loss(pred_batch, true_batch)
+            for pred_batch, true_batch in zip(pers_info_pred, pers_info_true)
+        ])
+
+        self.log("topo_loss", topo_loss.mean()),
+        return self.topo_lambda * topo_loss.mean()
+
+
     def training_step(self, train_batch, batch_idx):
         images, true_obj = train_batch
         pred = self(images)
         loss = self.binary_crossentropy_Dice(pred, true_obj)
+
+        loss += self.topological_step(pred, true_obj)
+
         self.log("train_loss", loss)
         return loss
 
     def validation_step(self, val_batch, batch_idx):
         images, true_obj = val_batch
-        pred = self.forward(images)
-        loss = self.binary_crossentropy_Dice(true_obj, pred)
+        pred = self(images)
+        loss = self.binary_crossentropy_Dice(pred, true_obj)
+
+        loss += self.topological_step(pred, true_obj)
+
         self.log("val_loss", loss)
 
     def train_dataloader(self):
-        dataset = SHAPRDataset(self.path, self.cv_train_filenames)
+        dataset = SHAPRDataset(self.path, self.cv_train_filenames, self.random_seed)
         train_loader = DataLoader(dataset, batch_size=self.batch_size, pin_memory=True, shuffle=True)
         return train_loader
 
     def val_dataloader(self):
-        dataset = SHAPRDataset(self.path, self.cv_val_filenames)
+        dataset = SHAPRDataset(self.path, self.cv_val_filenames, self.random_seed)
         val_loader = DataLoader(dataset, batch_size=self.batch_size, pin_memory=True, shuffle=True)
         return val_loader
 
     def test_dataloader(self):
-        dataset = SHAPRDataset(self.path, self.cv_test_filenames)
+        dataset = SHAPRDataset(self.path, self.cv_test_filenames, self.random_seed)
         test_loader = DataLoader(dataset)
         return test_loader
 
@@ -315,6 +379,7 @@ class LightningSHAPR_GANoptimization(pl.LightningModule):
     def __init__(self, settings, cv_train_filenames, cv_val_filenames):
         super(LightningSHAPR_GANoptimization, self).__init__()
 
+        self.random_seed = settings.random_seed
         self.path = settings.path
         self.cv_train_filenames = cv_train_filenames
         self.cv_val_filenames = cv_val_filenames
@@ -356,17 +421,17 @@ class LightningSHAPR_GANoptimization(pl.LightningModule):
         #return (self.MSEloss(y_pred, y_true) + F.binary_cross_entropy(y_pred, y_true))/2
 
     def train_dataloader(self):
-        dataset = SHAPRDataset(self.path, self.cv_train_filenames)
+        dataset = SHAPRDataset(self.path, self.cv_train_filenames, self.random_seed)
         train_loader = DataLoader(dataset, batch_size=self.batch_size, pin_memory=True, shuffle=True)
         return train_loader
 
     def val_dataloader(self):
-        dataset = SHAPRDataset(self.path, self.cv_val_filenames)
+        dataset = SHAPRDataset(self.path, self.cv_val_filenames, self.random_seed)
         val_loader = DataLoader(dataset, batch_size=self.batch_size, pin_memory=True, shuffle=True)
         return val_loader
 
     def test_dataloader(self):
-        dataset = SHAPRDataset(self.path, self.cv_test_filenames)
+        dataset = SHAPRDataset(self.path, self.cv_test_filenames, self.random_seed)
         test_loader = DataLoader(dataset)
         return test_loader
 
