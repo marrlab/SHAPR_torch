@@ -111,9 +111,17 @@ if __name__ == '__main__':
         source = imread(os.path.join(args.SOURCE, filename)) / 255.0
 
         for target_ in args.TARGET:
+            target_path = os.path.join(target_, filename)
+
+            # Skip file for *all* targets to ensure that we are making
+            # the right comparisons.
+            if not os.path.exists(target_path):
+                print(f'Skipping {target_}...')
+                break
+
             target = np.squeeze(
                 norm_thres(np.nan_to_num(
-                        imread(os.path.join(target_, filename))
+                        imread(target_path)
                     )
                 )
             )
