@@ -110,14 +110,22 @@ if __name__ == '__main__':
     for filename in tqdm(filenames, desc='File'):
         source = imread(os.path.join(args.SOURCE, filename)) / 255.0
 
+        # First check whether all files exist; else, we skip processing
+        # in order to ensure consistent lists.
+
+        skip = False
         for target_ in args.TARGET:
             target_path = os.path.join(target_, filename)
 
-            # Skip file for *all* targets to ensure that we are making
-            # the right comparisons.
             if not os.path.exists(target_path):
-                print(f'Skipping {target_}...')
+                skip = True
                 break
+
+        if skip:
+            continue
+
+        for target_ in args.TARGET:
+            target_path = os.path.join(target_, filename)
 
             target = np.squeeze(
                 norm_thres(np.nan_to_num(
