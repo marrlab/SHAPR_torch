@@ -98,6 +98,13 @@ if __name__ == '__main__':
     parser.add_argument('SOURCE', type=str, help='Source directory')
     parser.add_argument('TARGET', type=str, nargs='+', help='Target directory')
 
+    parser.add_argument(
+        '-q', '--quick',
+        action='store_true',
+        help='If set, only calculates statistics that can be obtained '
+             'efficiently.'
+    )
+
     args = parser.parse_args()
 
     iou_inv = collections.defaultdict(list)
@@ -142,24 +149,40 @@ if __name__ == '__main__':
                     np.abs(np.sum(target) - np.sum(source)) / np.sum(source)
                 )
 
-                source_surface = get_surface(source)
-                surface[name].append(
-                    np.abs(get_surface(target) - source_surface)
-                    / source_surface
-                )
+                if not args.quick:
+                    source_surface = get_surface(source)
+                    surface[name].append(
+                        np.abs(get_surface(target) - source_surface)
+                        / source_surface
+                    )
 
-                source_roughness = get_roughness(source)
-                roughness[name].append(
-                    np.abs(get_roughness(target) - source_roughness)
-                    / source_roughness
-                )
+                    source_roughness = get_roughness(source)
+                    roughness[name].append(
+                        np.abs(get_roughness(target) - source_roughness)
+                        / source_roughness
+                    )
 
-    fig, axes = plt.subplots(nrows=4, squeeze=True, figsize=(5, 6))
+    fig, axes = plt.subplots(
+        nrows=4 - 2 * args.quick,
+        squeeze=True,
+        figsize=(5, 6)
+    )
 
     swarmplot(pd.DataFrame.from_dict(iou_inv), '1 - IoU', axes[0])
     swarmplot(pd.DataFrame.from_dict(volume), 'Volume error', axes[1])
-    swarmplot(pd.DataFrame.from_dict(surface), 'Surface error', axes[2])
-    swarmplot(pd.DataFrame.from_dict(roughness), 'Roughness error', axes[3])
+
+    if not args.quick:
+        swarmplot(
+            pd.DataFrame.from_dict(surface),
+            'Surface error',
+            axes[2]
+        )
+
+        swarmplot(
+            pd.DataFrame.from_dict(roughness),
+            'Roughness error',
+            axes[3]
+        )
 
     plt.tight_layout()
     plt.show()
