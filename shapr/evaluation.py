@@ -113,6 +113,7 @@ if __name__ == '__main__':
     roughness = collections.defaultdict(list)
 
     filenames = sorted(os.listdir(args.SOURCE))
+    processed = []
 
     for filename in tqdm(filenames, desc='File'):
         source = imread(os.path.join(args.SOURCE, filename)) / 255.0
@@ -128,8 +129,10 @@ if __name__ == '__main__':
                 skip = True
                 break
 
-        if skip:
+        if skip or np.mean(source) < 0.1:
             continue
+        else:
+            processed.append(os.path.basename(filename))
 
         for target_ in args.TARGET:
             target_path = os.path.join(target_, filename)
@@ -143,24 +146,30 @@ if __name__ == '__main__':
 
             name = os.path.basename(target_)
 
-            if np.mean(source) > 0.1:
-                iou_inv[name].append(1 - IoU(source, target))
-                volume[name].append(
-                    np.abs(np.sum(target) - np.sum(source)) / np.sum(source)
+            iou_inv[name].append(1 - IoU(source, target))
+            volume[name].append(
+                np.abs(np.sum(target) - np.sum(source)) / np.sum(source)
+            )
+
+            if not args.quick:
+                source_surface = get_surface(source)
+                surface[name].append(
+                    np.abs(get_surface(target) - source_surface)
+                    / source_surface
                 )
 
-                if not args.quick:
-                    source_surface = get_surface(source)
-                    surface[name].append(
-                        np.abs(get_surface(target) - source_surface)
-                        / source_surface
-                    )
+                source_roughness = get_roughness(source)
+                roughness[name].append(
+                    np.abs(get_roughness(target) - source_roughness)
+                    / source_roughness
+                )
 
-                    source_roughness = get_roughness(source)
-                    roughness[name].append(
-                        np.abs(get_roughness(target) - source_roughness)
-                        / source_roughness
-                    )
+    # Since we rank data sets based on this quantity, it makes sense to
+    # calculate a fixed data frame here.
+    df_iou = pd.DataFrame.from_dict(iou_inv)
+    df_iou['filename'] = processed
+
+    print(df_iou)
 
     fig, axes = plt.subplots(
         nrows=4 - 2 * args.quick,
@@ -168,8 +177,14 @@ if __name__ == '__main__':
         figsize=(5, 6)
     )
 
-    swarmplot(pd.DataFrame.from_dict(iou_inv), '1 - IoU', axes[0])
+    swarmplot(df_iou, '1 - IoU', axes[0])
     swarmplot(pd.DataFrame.from_dict(volume), 'Volume error', axes[1])
+
+    filenames = list(map(os.path.basename, filenames))
+
+    if len(filenames) > len(processed):
+        skipped = sorted(set(filenames) - set(processed))
+        print(f'Skipped some files: {skipped}')
 
     if not args.quick:
         swarmplot(
