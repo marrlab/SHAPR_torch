@@ -169,7 +169,8 @@ if __name__ == '__main__':
     df_iou = pd.DataFrame.from_dict(iou_inv)
     df_iou['filename'] = processed
 
-    print(df_iou)
+    for col in df_iou.select_dtypes('number').columns:
+        print(df_iou[[col, 'filename']].sort_values(by=col))
 
     fig, axes = plt.subplots(
         nrows=4 - 2 * args.quick,
