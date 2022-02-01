@@ -37,7 +37,7 @@ def calculate_statistics(diagrams):
         for diagram in diagrams:
             result[name].append(fn(diagram).numpy())
 
-    return pd.DataFrame.from_dict(result)
+    return pd.DataFrame.from_dict(result).astype(float)
 
 
 if __name__ == '__main__':
@@ -66,8 +66,7 @@ if __name__ == '__main__':
     index = 0
 
     for _, objects in loader:
-        # TODO: Make this configurable or read it from settings?
-        size = 16
+        size = settings.topo_interp
         objects = torch.nn.functional.interpolate(
             input=objects, size=(size, ) * 3,
         )
@@ -94,8 +93,10 @@ if __name__ == '__main__':
 
         index += len(objects)
 
-    df = pd.concat(all_dfs, ignore_index=True)
+    df = pd.concat(all_dfs, ignore_index=True).fillna(value=4711)
     df.to_csv(sys.stdout, index=False)
+
+    print(df.describe())
 
     # Create feature vector representation: we just group by index, then
     # ravel all measurements over all dimensions.
