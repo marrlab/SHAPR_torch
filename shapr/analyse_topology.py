@@ -1,5 +1,6 @@
 """Analyse topology of input data set."""
 
+import argparse
 import collections
 import itertools
 import os
@@ -12,7 +13,7 @@ import matplotlib.pyplot as plt
 
 from sklearn.manifold import MDS
 
-from shapr import settings
+from shapr._settings import SHAPRConfig
 from shapr.data_generator import SHAPRDataset
 
 from torch.utils.data import DataLoader
@@ -40,11 +41,23 @@ def calculate_statistics(diagrams):
 
 
 if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        '-p', '--params',
+        type=str,
+        default=None,
+        help='Config file'
+    )
+
+    args = parser.parse_args()
+
+    settings = SHAPRConfig(params=args.params)
+
     all_files = os.listdir(
         os.path.join(settings.path, "obj/")
     )
 
-    data_set = SHAPRDataset(settings.path, all_files)
+    data_set = SHAPRDataset(settings.path, all_files, settings.random_seed)
     loader = DataLoader(data_set, batch_size=8, shuffle=True)
 
     cubical_complex = CubicalComplex(dim=3)
