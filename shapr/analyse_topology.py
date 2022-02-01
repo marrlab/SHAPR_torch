@@ -19,6 +19,7 @@ from shapr.data_generator import SHAPRDataset
 from torch.utils.data import DataLoader
 
 from torch_topological.nn import CubicalComplex
+from torch_topological.nn import WassersteinDistance
 
 from torch_topological.utils import total_persistence
 from torch_topological.utils import persistent_entropy
@@ -83,6 +84,22 @@ if __name__ == '__main__':
                 [x__.diagram for x__ in x_]
                 for x_ in pers_info_
             ]
+
+            # Experiment a little bit with the Wasserstein distance
+            # here, at least with the first batch.
+            if index == 0:
+                wasserstein = WassersteinDistance(q=2)
+                pers_info_ = itertools.chain.from_iterable(pers_info_)
+
+                for X, Y in zip(pers_info_, pers_info_):
+                    dist = wasserstein([X], [Y])
+                    tp1 = total_persistence(X.diagram)
+                    tp2 = total_persistence(Y.diagram)
+
+                    if tp1 + tp2 < dist:
+                        print('Ooops...')
+                    else:
+                        print(dist.numpy(), (tp1 + tp2).numpy())
 
             diagrams = list(itertools.chain.from_iterable(diagrams))
             df = calculate_statistics(diagrams)
