@@ -129,7 +129,7 @@ if __name__ == '__main__':
                 skip = True
                 break
 
-        if skip or np.mean(source) < 0.1:
+        if skip:
             continue
         else:
             processed.append(os.path.basename(filename))
@@ -170,7 +170,7 @@ if __name__ == '__main__':
     df_iou['filename'] = processed
 
     for col in df_iou.select_dtypes('number').columns:
-        print(df_iou[[col, 'filename']].sort_values(by=col))
+        print(df_iou[[col, 'filename']].sort_values(by=col)[:5])
 
     fig, axes = plt.subplots(
         nrows=4 - 2 * args.quick,
