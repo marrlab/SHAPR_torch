@@ -125,54 +125,6 @@ class DiscriminatorOut(nn.Module):
     def forward(self, x):
         return self.disc_out(x)
 
-class SHAPR(nn.Module):
-    def __init__(self):
-        super(SHAPR, self).__init__()
-        n_filters = 10
-        self.conv1 = EncoderBlock(2, n_filters)
-        self.down1 = Down122()
-        self.conv2 = EncoderBlock(n_filters, n_filters*2)
-        self.down2 = Down122()
-        self.conv3 = EncoderBlock(n_filters*2, n_filters*4)
-        self.encout = EncoderOut(n_filters*4, n_filters*8)
-
-        self.conv4 = DecoderBlock(n_filters*8, n_filters*8)
-        self.up4 = Up211(n_filters*8, n_filters*8)
-        self.conv5 = DecoderBlock(n_filters*8, n_filters*8)
-        self.up5 = Up211(n_filters*8, n_filters*8)
-        self.conv6 = DecoderBlock(n_filters*8, n_filters*4)
-        self.up6 = Up222(n_filters*4, n_filters*4)
-        self.conv7 = DecoderBlock(n_filters*4, n_filters*4)
-        self.up7 = Up211(n_filters*4, n_filters*4)
-        self.conv8 = DecoderBlock(n_filters*4, n_filters*2)
-        self.up8 = Up211(n_filters*2, n_filters*2)
-        self.conv9 = DecoderBlock(n_filters*2, n_filters)
-        self.up9 = Up222(n_filters, n_filters)
-        self.conv10 = DecoderBlock(n_filters, n_filters)
-        self.decout = DecoderOut(n_filters, 1)
-
-
-    def forward(self, x_in):
-        x = self.conv1(x_in)
-        x = self.down1(x)
-        x = self.conv2(x)
-        x = self.down2(x)
-        x = self.conv3(x)
-        x_enc = self.encout(x)
-        x = self.conv4(x_enc)
-        x = self.up4(x)
-        x = self.conv5(x)
-        x = self.up5(x)
-        x = self.conv6(x)
-        x = self.up6(x)
-        x = self.conv7(x)
-        x = self.up7(x)
-        x = self.conv8(x)
-        x = self.up8(x)
-        x = self.conv9(x)
-        x = self.up9(x)
-        x_dec = self.decout(x)
-        return x_dec
 
 class Discriminator(nn.Module):
     def __init__(self):
@@ -201,6 +153,7 @@ class Discriminator(nn.Module):
         x = self.conv5(x)
         x_dis = self.discout(x)
         return x_dis
+
 
 class SHAPR(nn.Module):
     def __init__(self):
