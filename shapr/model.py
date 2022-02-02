@@ -386,6 +386,13 @@ class LightningSHAPR_GANoptimization(pl.LightningModule):
         self.batch_size = settings.batch_size
         # Define model
         self.shapr = SHAPR()
+
+        self.cubical_complex = CubicalComplex(dim=3)
+        self.topo_loss = WassersteinDistance(q=2)
+        self.topo_lambda = settings.topo_lambda
+        self.topo_interp = settings.topo_interp
+        self.topo_feat_d = settings.topo_feat_d
+
         if settings.epochs_SHAPR > 0:
             list_of_weights = os.listdir(settings.path + "logs/")
             list_of_weights = [settings.path + "logs/" + wp for wp in list_of_weights]
@@ -435,6 +442,50 @@ class LightningSHAPR_GANoptimization(pl.LightningModule):
         test_loader = DataLoader(dataset)
         return test_loader
 
+    def topological_step(self, pred_obj, true_obj):
+        """Calculate topological features and adjust loss."""
+        # Check whether there's anything to do here. This makes it
+        # possible to disable the calculation of topological features
+        # altogether.
+        if self.topo_lambda == 0.0:
+            return 0.0
+
+        if self.topo_interp != 0:
+            size = (self.topo_interp, ) * 3
+            pred_obj_ = nn.functional.interpolate(input=pred_obj, size=size)
+            true_obj_ = nn.functional.interpolate(input=true_obj, size=size)
+
+        # No interpolation desired by client; use the original data set,
+        # thus making everything slower.
+        else:
+            pred_obj_ = pred_obj
+            true_obj_ = true_obj
+
+        # Calculate topological features of predicted 3D tensor and true
+        # 3D tensor. The `squeeze()` ensures that we are ignoring single
+        # dimensions such as channels.
+        pers_info_pred = self.cubical_complex(pred_obj_.squeeze())
+        pers_info_true = self.cubical_complex(true_obj_.squeeze())
+
+        pers_info_pred = [
+            [x__ for x__ in x_ if x__.dimension == self.topo_feat_d]
+            for x_ in pers_info_pred
+        ]
+
+        pers_info_true = [
+            [x__ for x__ in x_ if x__.dimension == self.topo_feat_d]
+            for x_ in pers_info_true
+        ]
+
+        topo_loss = torch.stack([
+            self.topo_loss(pred_batch, true_batch)
+            for pred_batch, true_batch in zip(pers_info_pred, pers_info_true)
+        ])
+
+        self.log("topo_loss", topo_loss.mean()),
+        return self.topo_lambda * topo_loss.mean()
+     
+
     def training_step(self, train_batch, batch_idx, optimizer_idx):
         images, true_obj = train_batch
         valid = torch.ones(images.size(0), 1)
@@ -448,6 +499,7 @@ class LightningSHAPR_GANoptimization(pl.LightningModule):
             g_loss = self.adversarial_loss(self.discriminator(self(images)), valid)
             print("supervised loss:", supervised_loss.item(), "gan loss:", g_loss.item())
             loss = (10*supervised_loss + g_loss) / 11
+            loss += self.topological_step(self(images), true_obj)
             tqdm_dict = {'g_loss': loss}
             output = OrderedDict({
                 'loss': loss,
@@ -490,6 +542,4 @@ class LightningSHAPR_GANoptimization(pl.LightningModule):
 
         opt_s = torch.optim.Adam(self.shapr.parameters())#, lr=0.001)
         opt_d = torch.optim.Adam(self.discriminator.parameters(),lr = 0.00005)# lr=0.00000005)
-        #opt_g = torch.optim.Adam(self.shapr.parameters(), lr=lr_1, betas=(b1_1, b2_1))
-        #opt_d = torch.optim.Adam(self.discriminator.parameters(), lr=lr_2, betas=(b1_2, b2_2))
         return [opt_s, opt_d], []
