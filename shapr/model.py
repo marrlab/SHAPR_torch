@@ -12,6 +12,8 @@ import os
 from torch_topological.nn import CubicalComplex
 from torch_topological.nn import WassersteinDistance
 
+from torch_topological.nn.data import batch_iter
+
 
 class EncoderBlock(nn.Module):
     """(convolution => [BN] => ReLU) * 2"""
@@ -322,13 +324,11 @@ class LightningSHAPRoptimization(pl.LightningModule):
         pers_info_true = self.cubical_complex(true_obj_.squeeze())
 
         pers_info_pred = [
-            [x__ for x__ in x_ if x__.dimension == self.topo_feat_d]
-            for x_ in pers_info_pred
+            x for x in batch_iter(pers_info_pred, dim=self.topo_feat_d)
         ]
 
         pers_info_true = [
-            [x__ for x__ in x_ if x__.dimension == self.topo_feat_d]
-            for x_ in pers_info_true
+            x for x in batch_iter(pers_info_true, dim=self.topo_feat_d)
         ]
 
         topo_loss = torch.stack([
