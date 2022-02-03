@@ -2,6 +2,7 @@
 
 import argparse
 import glob
+import gc
 import math
 import os
 
@@ -277,6 +278,8 @@ if __name__ == '__main__':
 
         plotter.show()
         image = plotter.screenshot(returnNumpy=True)
+        plotter.close()
+
 
         ax.set_visible(True)
         ax.imshow(image)
