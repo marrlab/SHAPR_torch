@@ -2,6 +2,7 @@
 
 import argparse
 import glob
+import math
 import os
 
 import matplotlib.pyplot as plt
@@ -248,7 +249,16 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
-    for filename in sorted(glob.glob(os.path.join(args.DIRECTORY, '*.tif'))):
+    filenames = sorted(glob.glob(os.path.join(args.DIRECTORY, '*.tif')))
+
+    n_rows = int(math.ceil(math.sqrt(len(filenames)) + 0.5))
+    fig, axes = plt.subplots(n_rows, n_rows, figsize=(8, 8))
+
+    for ax in axes.ravel():
+        ax.set_xticks([])
+        ax.set_yticks([])
+
+    for filename, ax in zip(filenames, axes.ravel()):
         image_data = import_image(filename).squeeze()
 
         if args.threshold:
@@ -267,5 +277,7 @@ if __name__ == '__main__':
         plotter.show()
         image = plotter.screenshot(returnNumpy=True)
 
-        plt.imshow(image)
-        plt.show()
+        ax.imshow(image)
+
+    plt.subplots_adjust(hspace=0, wspace=0)
+    plt.show()
