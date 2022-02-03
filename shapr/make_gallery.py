@@ -257,6 +257,7 @@ if __name__ == '__main__':
     for ax in axes.ravel():
         ax.set_xticks([])
         ax.set_yticks([])
+        ax.set_visible(False)
 
     for filename, ax in zip(filenames, axes.ravel()):
         image_data = import_image(filename).squeeze()
@@ -277,7 +278,9 @@ if __name__ == '__main__':
         plotter.show()
         image = plotter.screenshot(returnNumpy=True)
 
+        ax.set_visible(True)
         ax.imshow(image)
 
+    plt.tight_layout(pad=0.0)
     plt.subplots_adjust(hspace=0, wspace=0)
     plt.show()
