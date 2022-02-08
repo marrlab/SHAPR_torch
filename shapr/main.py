@@ -54,6 +54,10 @@ def run_train(amp: bool = False, params=None):
     kf = KFold(n_splits=5)
     os.makedirs(os.path.join(settings.path, "logs"), exist_ok=True)
 
+    # Make sure that all of these runs get assigned to the same run
+    # group.
+    os.environ["WANDB_RUN_GROUP"] = "experiment-" + wandb.util.generate_id()
+
     for fold, (cv_train_indices, cv_test_indices) in enumerate(kf.split(filenames)):
 
         items = [
@@ -70,6 +74,7 @@ def run_train(amp: bool = False, params=None):
         run = wandb.init(
             project="SHAPR",
             entity="brieck",
+            job_type="train",
             reinit=True,
             config=config
         )
