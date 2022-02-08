@@ -62,6 +62,9 @@ def run_train(amp: bool = False, params=None, overrides=None):
     # group.
     os.environ["WANDB_RUN_GROUP"] = "experiment-" + wandb.util.generate_id()
 
+    # Single logger is sufficient; else, we get some warnings.
+    wandb_logger = WandbLogger()
+
     for fold, (cv_train_indices, cv_test_indices) in enumerate(kf.split(filenames)):
 
         items = [
@@ -102,7 +105,6 @@ def run_train(amp: bool = False, params=None, overrides=None):
             monitor='val_loss', patience=10
         )
         tb_logger = TensorBoardLogger("logs/")
-        wandb_logger = WandbLogger()
 
         SHAPRmodel = LightningSHAPRoptimization(settings, cv_train_filenames, cv_val_filenames)
         SHAPR_trainer = pl.Trainer(
@@ -160,15 +162,18 @@ def run_train(amp: bool = False, params=None, overrides=None):
                     imsave(os.path.join(settings.result_path, test_file), (255 * prediction).astype("uint8"))
 
         else:
-            with torch.no_grad():
-                SHAPRmodel.eval()
-                for test_file in cv_test_filenames:
-                    image = torch.from_numpy(get_test_image(settings, test_file))
-                    img = image.float()
-                    output = SHAPRmodel(img)
-                    os.makedirs(settings.result_path, exist_ok=True)
-                    prediction = output.cpu().detach().numpy()
-                    imsave(os.path.join(settings.result_path, test_file), (255 * prediction).astype("uint8"))
+            # Skip storing results if no path has been set. This is
+            # useful for sweeps.
+            if len(settings.result_path) > 0:
+                with torch.no_grad():
+                    SHAPRmodel.eval()
+                    for test_file in cv_test_filenames:
+                        image = torch.from_numpy(get_test_image(settings, test_file))
+                        img = image.float()
+                        output = SHAPRmodel(img)
+                        os.makedirs(settings.result_path, exist_ok=True)
+                        prediction = output.cpu().detach().numpy()
+                        imsave(os.path.join(settings.result_path, test_file), (255 * prediction).astype("uint8"))
 
         run.finish()
 
