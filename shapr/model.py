@@ -319,7 +319,12 @@ class LightningSHAPRoptimization(pl.LightningModule):
 
     def val_dataloader(self):
         dataset = SHAPRDataset(self.path, self.cv_val_filenames, self.random_seed)
-        val_loader = DataLoader(dataset, batch_size=self.batch_size, pin_memory=True, shuffle=True)
+        val_loader = DataLoader(
+            dataset,
+            batch_size=self.batch_size,
+            pin_memory=True,
+            shuffle=False
+        )
         return val_loader
 
     def test_dataloader(self):
@@ -380,7 +385,12 @@ class LightningSHAPR_GANoptimization(pl.LightningModule):
 
     def val_dataloader(self):
         dataset = SHAPRDataset(self.path, self.cv_val_filenames, self.random_seed)
-        val_loader = DataLoader(dataset, batch_size=self.batch_size, pin_memory=True, shuffle=True)
+        val_loader = DataLoader(
+            dataset,
+            batch_size=self.batch_size,
+            pin_memory=True,
+            shuffle=False
+        )
         return val_loader
 
     def test_dataloader(self):
