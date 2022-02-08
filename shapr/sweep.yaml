@@ -1,8 +1,10 @@
 method: grid
 
 parameters:
-  path: "../docs/sample/"
-  result_path: ""
+  path:
+    value: "../docs/sample/"
+  result_path:
+    value: ""
   topo_interp:
     values: [8, 16, 32]
   topo_feat_d:
