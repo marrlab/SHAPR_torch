@@ -1,6 +1,9 @@
 from shapr._settings import SHAPRConfig
+from shapr.data_generator import get_test_image
 
 from model import LightningSHAPRoptimization, LightningSHAPR_GANoptimization
+
+from skimage.io import imsave
 
 from sklearn.model_selection import KFold
 from sklearn.model_selection import train_test_split
@@ -8,7 +11,8 @@ from sklearn.model_selection import train_test_split
 import pytorch_lightning as pl
 
 from pytorch_lightning.callbacks import ModelCheckpoint, EarlyStopping
-from pytorch_lightning import loggers as pl_loggers
+from pytorch_lightning.loggers import TensorBoardLogger 
+from pytorch_lightning.loggers import WandbLogger
 
 import os
 import torch
@@ -51,6 +55,25 @@ def run_train(amp: bool = False, params=None):
     os.makedirs(os.path.join(settings.path, "logs"), exist_ok=True)
 
     for fold, (cv_train_indices, cv_test_indices) in enumerate(kf.split(filenames)):
+
+        items = [
+            (k, v) for k, v in settings.__dict__.items()
+            if not k.startswith('_')
+        ]
+
+        config = {
+            k: v for k, v in items
+        }
+
+        config['fold'] = fold
+
+        run = wandb.init(
+            project="SHAPR",
+            entity="brieck",
+            reinit=True,
+            config=config
+        )
+
         cv_train_filenames = [str(filenames[i]) for i in cv_train_indices]
         cv_test_filenames = [str(filenames[i]) for i in cv_test_indices]
 
@@ -67,12 +90,14 @@ def run_train(amp: bool = False, params=None):
             mode="min",
         )
         early_stopping_callback = EarlyStopping(monitor='val_loss', patience=5)
-        tb_logger = pl_loggers.TensorBoardLogger("logs/")
+        tb_logger = TensorBoardLogger("logs/")
+        wandb_logger = WandbLogger()
         SHAPRmodel = LightningSHAPRoptimization(settings, cv_train_filenames, cv_val_filenames)
         SHAPR_trainer = pl.Trainer(
             max_epochs=settings.epochs_SHAPR,
             callbacks=[checkpoint_callback,
-            early_stopping_callback], logger=tb_logger,
+            early_stopping_callback],
+            logger=[tb_logger, wandb_logger],
             gpus=gpus
         )
         SHAPR_trainer.fit(model= SHAPRmodel)
@@ -97,7 +122,8 @@ def run_train(amp: bool = False, params=None):
 
         SHAPR_GAN_trainer = pl.Trainer(
             callbacks=[early_stopping_callback, checkpoint_callback],
-            max_epochs=settings.epochs_cSHAPR,logger=tb_logger,
+            max_epochs=settings.epochs_cSHAPR,
+            logger=[tb_logger, wandb_logger],
             gpus=gpus
         )
         SHAPR_GAN_trainer.fit(model=SHAPR_GANmodel)
@@ -126,6 +152,8 @@ def run_train(amp: bool = False, params=None):
                     os.makedirs(settings.result_path, exist_ok=True)
                     prediction = output.cpu().detach().numpy()
                     imsave(os.path.join(settings.result_path, test_file), (255 * prediction).astype("uint8"))
+
+        run.finish()
 
 
 def run_evaluation():
