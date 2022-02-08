@@ -4,8 +4,7 @@ import torch.nn.functional as F
 import pytorch_lightning as pl
 from data_generator import SHAPRDataset
 from torch.utils.data import DataLoader, random_split
-from metrics import dice_loss as dice_loss
-import torchvision
+from metrics import BCEDiceLoss
 from collections import OrderedDict
 import os
 
@@ -17,7 +16,8 @@ from torch_topological.nn.data import batch_iter
 
 class EncoderBlock(nn.Module):
     """(convolution => [BN] => ReLU) * 2"""
-    def __init__(self, in_channels, out_channels, mid_channels = None):
+
+    def __init__(self, in_channels, out_channels, mid_channels=None):
         super().__init__()
         if not mid_channels:
             mid_channels = out_channels
@@ -29,13 +29,15 @@ class EncoderBlock(nn.Module):
             nn.BatchNorm3d(out_channels),
             nn.ReLU(inplace=True)
         )
+
     def forward(self, x):
         return self.encoderblock(x)
+
 
 class DecoderBlock(nn.Module):
     """(convolution => [BN] => ReLU) * 2"""
 
-    def __init__(self, in_channels, out_channels, mid_channels = None):
+    def __init__(self, in_channels, out_channels, mid_channels=None):
         super().__init__()
         if not mid_channels:
             mid_channels = out_channels
@@ -47,8 +49,10 @@ class DecoderBlock(nn.Module):
             nn.BatchNorm3d(out_channels),
             nn.ReLU(inplace=True)
         )
+
     def forward(self, x):
         return self.decoderblock(x)
+
 
 class Down122(nn.Module):
     """Downscaling with maxpool then double conv"""
@@ -58,8 +62,10 @@ class Down122(nn.Module):
         self.maxpool = nn.Sequential(
             nn.MaxPool3d((1, 2, 2)),
         )
+
     def forward(self, x):
         return self.maxpool(x)
+
 
 class Down222(nn.Module):
     """Downscaling with maxpool then double conv"""
@@ -69,47 +75,62 @@ class Down222(nn.Module):
         self.maxpool = nn.Sequential(
             nn.MaxPool3d((2, 2, 2)),
         )
+
     def forward(self, x):
         return self.maxpool(x)
 
+
 class Up211(nn.Module):
     """Upscaling then double conv"""
+
     def __init__(self, in_channels, out_channels):
         super().__init__()
-        self.up = nn.ConvTranspose3d(in_channels, in_channels, kernel_size=(2,1,1), stride=(2, 1, 1))
+        self.up = nn.ConvTranspose3d(in_channels, in_channels, kernel_size=(2, 1, 1), stride=(2, 1, 1))
+
     def forward(self, x):
         return self.up(x)
+
 
 class Up222(nn.Module):
     """Upscaling then double conv"""
+
     def __init__(self, in_channels, out_channels):
         super().__init__()
-        self.up = nn.ConvTranspose3d(in_channels, out_channels, kernel_size=(2,2,2), stride=(2, 2, 2))
+        self.up = nn.ConvTranspose3d(in_channels, out_channels, kernel_size=(2, 2, 2), stride=(2, 2, 2))
+
     def forward(self, x):
         return self.up(x)
 
+
 class EncoderOut(nn.Module):
     """Upscaling then double conv"""
+
     def __init__(self, in_channels, out_channels):
         super().__init__()
         self.enc_out = nn.Sequential(
-            nn.Conv3d(in_channels, out_channels,  kernel_size=(1, 3, 3), padding='same', bias=False),
+            nn.Conv3d(in_channels, out_channels, kernel_size=(1, 3, 3), padding='same', bias=False),
             nn.Sigmoid())
+
     def forward(self, x):
         return self.enc_out(x)
 
+
 class DecoderOut(nn.Module):
     """Upscaling then double conv"""
+
     def __init__(self, in_channels, out_channels):
         super().__init__()
         self.dec_out = nn.Sequential(
             nn.Conv3d(in_channels, out_channels, kernel_size=(3, 3, 3), padding='same', bias=False),
             nn.Sigmoid())
+
     def forward(self, x):
         return self.dec_out(x)
 
+
 class DiscriminatorOut(nn.Module):
     """Upscaling then double conv"""
+
     def __init__(self, in_channels, out_channels):
         super().__init__()
         self.disc_out = nn.Sequential(
@@ -122,6 +143,7 @@ class DiscriminatorOut(nn.Module):
             nn.Linear(64, 1),
             nn.Sigmoid()
         )
+
     def forward(self, x):
         return self.disc_out(x)
 
@@ -132,14 +154,14 @@ class Discriminator(nn.Module):
         n_filters = 10
         self.conv1 = EncoderBlock(1, n_filters)
         self.down1 = Down222()
-        self.conv2 = EncoderBlock(n_filters, n_filters*2)
+        self.conv2 = EncoderBlock(n_filters, n_filters * 2)
         self.down2 = Down222()
-        self.conv3 = EncoderBlock(n_filters*2, n_filters*4)
+        self.conv3 = EncoderBlock(n_filters * 2, n_filters * 4)
         self.down3 = Down222()
-        self.conv4 = EncoderBlock(n_filters*4, n_filters*8)
+        self.conv4 = EncoderBlock(n_filters * 4, n_filters * 8)
         self.down4 = Down222()
-        self.conv5 = EncoderBlock(n_filters*8, n_filters*16)
-        self.discout = DiscriminatorOut(n_filters*16, 1)
+        self.conv5 = EncoderBlock(n_filters * 8, n_filters * 16)
+        self.discout = DiscriminatorOut(n_filters * 16, 1)
 
     def forward(self, x_in):
         x = self.conv1(x_in)
@@ -219,8 +241,7 @@ class LightningSHAPRoptimization(pl.LightningModule):
         self.lr = 0.01
 
         # Defining loss
-        self.ce_loss = nn.CrossEntropyLoss()
-        self.dice_loss = dice_loss
+        self.BCEDiceLoss = BCEDiceLoss(0.5, 0.5, 0)
 
         # Required for topological feature calculation. We want cubical
         # complexes because they handle images intrinsically.
@@ -240,16 +261,25 @@ class LightningSHAPRoptimization(pl.LightningModule):
         lr = 0.01
         b1 = 0.5
         b2 = 0.999
-        return torch.optim.Adam(self.shapr.parameters(), lr=lr)
+        opt = torch.optim.Adam(self.shapr.parameters(), lr=lr)
+        scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(opt, patience=2)
+        # return opt, scheduler
+        return {
+            'optimizer': opt,
+            'lr_scheduler': scheduler,
+            'monitor': 'val_loss'
+        }
 
     def MSEloss(self, y_true, y_pred):
         MSE = torch.nn.MSELoss()
+        y_pred = torch.squeeze(y_pred)
+        y_true = torch.squeeze(y_true)
         return MSE(y_true, y_pred)
 
     def binary_crossentropy_Dice(self, y_pred, y_true):
-        #return self.dice_loss(y_pred, y_true)
-        return (self.dice_loss(y_pred, y_true) + F.binary_cross_entropy(y_pred, y_true)) / 2
-        #return (self.MSEloss(y_pred, y_true) + F.binary_cross_entropy(y_pred, y_true)) / 2
+        y_pred = torch.squeeze(y_pred)
+        y_true = torch.squeeze(y_true)
+        return self.BCEDiceLoss(y_pred, y_true)
 
     def topological_step(self, pred_obj, true_obj):
         """Calculate topological features and adjust loss."""
@@ -260,7 +290,7 @@ class LightningSHAPRoptimization(pl.LightningModule):
             return 0.0
 
         if self.topo_interp != 0:
-            size = (self.topo_interp, ) * 3
+            size = (self.topo_interp,) * 3
             pred_obj_ = nn.functional.interpolate(input=pred_obj, size=size)
             true_obj_ = nn.functional.interpolate(input=true_obj, size=size)
 
@@ -292,7 +322,6 @@ class LightningSHAPRoptimization(pl.LightningModule):
         self.log("topo_loss", topo_loss.mean()),
         return self.topo_lambda * topo_loss.mean()
 
-
     def training_step(self, train_batch, batch_idx):
         images, true_obj = train_batch
         pred = self(images)
@@ -307,9 +336,7 @@ class LightningSHAPRoptimization(pl.LightningModule):
         images, true_obj = val_batch
         pred = self(images)
         loss = self.binary_crossentropy_Dice(pred, true_obj)
-
         loss += self.topological_step(pred, true_obj)
-
         self.log("val_loss", loss)
 
     def train_dataloader(self):
@@ -332,9 +359,10 @@ class LightningSHAPRoptimization(pl.LightningModule):
         test_loader = DataLoader(dataset)
         return test_loader
 
+
 # Define GAN
 class LightningSHAPR_GANoptimization(pl.LightningModule):
-    def __init__(self, settings, cv_train_filenames, cv_val_filenames):
+    def __init__(self, settings, cv_train_filenames, cv_val_filenames, SHAPR_best_model_path):
         super(LightningSHAPR_GANoptimization, self).__init__()
 
         self.random_seed = settings.random_seed
@@ -342,13 +370,18 @@ class LightningSHAPR_GANoptimization(pl.LightningModule):
         self.cv_train_filenames = cv_train_filenames
         self.cv_val_filenames = cv_val_filenames
         self.batch_size = settings.batch_size
+        self.SHAPR_best_model_path = SHAPR_best_model_path
         # Define model
+        #self.shapr = SHAPR()
+
+        self.cubical_complex = CubicalComplex(dim=3)
+        self.topo_loss = WassersteinDistance(q=2)
+        self.topo_lambda = settings.topo_lambda
+        self.topo_interp = settings.topo_interp
+        self.topo_feat_d = settings.topo_feat_d
         self.shapr = SHAPR()
         if settings.epochs_SHAPR > 0:
-            list_of_weights = os.listdir(settings.path + "logs/")
-            list_of_weights = [settings.path + "logs/" + wp for wp in list_of_weights]
-            latest_weights = max(list_of_weights, key=os.path.getctime)
-            checkpoint = torch.load(latest_weights, map_location=lambda storage, loc: storage)
+            checkpoint = torch.load(self.SHAPR_best_model_path, map_location=lambda storage, loc: storage)
             new_checkpoint = OrderedDict()
             for k, v in checkpoint['state_dict'].items():
                 if 'shapr' in k:
@@ -356,13 +389,12 @@ class LightningSHAPR_GANoptimization(pl.LightningModule):
                 else:
                     name = k
                 new_checkpoint[name] = v
-
             self.shapr.load_state_dict(new_checkpoint)
 
         self.discriminator = Discriminator()
         self.lr = 0.0001
         self.loss = nn.CrossEntropyLoss()
-        self.dice_loss = dice_loss
+        self.BCEDiceLoss = BCEDiceLoss(0.5, 0.5, 0)
 
     def forward(self, z):
         return self.shapr(z)
@@ -372,11 +404,14 @@ class LightningSHAPR_GANoptimization(pl.LightningModule):
 
     def MSEloss(self, y_true, y_pred):
         MSE = torch.nn.MSELoss()
+        y_pred = torch.squeeze(y_pred)
+        y_true = torch.squeeze(y_true)
         return MSE(y_true, y_pred)
 
     def binary_crossentropy_Dice(self, y_pred, y_true):
-        return (self.dice_loss(y_pred, y_true) + F.binary_cross_entropy(y_pred, y_true)) / 2
-        #return (self.MSEloss(y_pred, y_true) + F.binary_cross_entropy(y_pred, y_true))/2
+        y_pred = torch.squeeze(y_pred)
+        y_true = torch.squeeze(y_true)
+        return self.BCEDiceLoss(y_pred, y_true)
 
     def train_dataloader(self):
         dataset = SHAPRDataset(self.path, self.cv_train_filenames, self.random_seed)
@@ -398,6 +433,49 @@ class LightningSHAPR_GANoptimization(pl.LightningModule):
         test_loader = DataLoader(dataset)
         return test_loader
 
+    def topological_step(self, pred_obj, true_obj):
+        """Calculate topological features and adjust loss."""
+        # Check whether there's anything to do here. This makes it
+        # possible to disable the calculation of topological features
+        # altogether.
+        if self.topo_lambda == 0.0:
+            return 0.0
+
+        if self.topo_interp != 0:
+            size = (self.topo_interp,) * 3
+            pred_obj_ = nn.functional.interpolate(input=pred_obj, size=size)
+            true_obj_ = nn.functional.interpolate(input=true_obj, size=size)
+
+        # No interpolation desired by client; use the original data set,
+        # thus making everything slower.
+        else:
+            pred_obj_ = pred_obj
+            true_obj_ = true_obj
+
+        # Calculate topological features of predicted 3D tensor and true
+        # 3D tensor. The `squeeze()` ensures that we are ignoring single
+        # dimensions such as channels.
+        pers_info_pred = self.cubical_complex(pred_obj_.squeeze())
+        pers_info_true = self.cubical_complex(true_obj_.squeeze())
+
+        pers_info_pred = [
+            [x__ for x__ in x_ if x__.dimension == self.topo_feat_d]
+            for x_ in pers_info_pred
+        ]
+
+        pers_info_true = [
+            [x__ for x__ in x_ if x__.dimension == self.topo_feat_d]
+            for x_ in pers_info_true
+        ]
+
+        topo_loss = torch.stack([
+            self.topo_loss(pred_batch, true_batch)
+            for pred_batch, true_batch in zip(pers_info_pred, pers_info_true)
+        ])
+
+        self.log("topo_loss", topo_loss.mean()),
+        return self.topo_lambda * topo_loss.mean()
+
     def training_step(self, train_batch, batch_idx, optimizer_idx):
         images, true_obj = train_batch
         valid = torch.ones(images.size(0), 1)
@@ -410,7 +488,8 @@ class LightningSHAPR_GANoptimization(pl.LightningModule):
             supervised_loss = self.binary_crossentropy_Dice(self(images), true_obj)
             g_loss = self.adversarial_loss(self.discriminator(self(images)), valid)
             print("supervised loss:", supervised_loss.item(), "gan loss:", g_loss.item())
-            loss = (10*supervised_loss + g_loss) / 11
+            loss = (10 * supervised_loss + g_loss) / 11
+            loss += self.topological_step(self(images), true_obj)
             tqdm_dict = {'g_loss': loss}
             output = OrderedDict({
                 'loss': loss,
@@ -440,7 +519,9 @@ class LightningSHAPR_GANoptimization(pl.LightningModule):
 
     def validation_step(self, val_batch, batch_idx):
         images, true_obj = val_batch
-        loss = self.binary_crossentropy_Dice(true_obj, self(images))
+        pred = self(images)
+        loss = self.binary_crossentropy_Dice(pred, true_obj)
+        loss += self.topological_step(pred, true_obj)
         self.log("val_loss", loss)
 
     def configure_optimizers(self):
@@ -450,9 +531,10 @@ class LightningSHAPR_GANoptimization(pl.LightningModule):
         lr_2 = 0.0001
         b1_2 = 0.5
         b2_2 = 0.999
-
-        opt_s = torch.optim.Adam(self.shapr.parameters())#, lr=0.001)
-        opt_d = torch.optim.Adam(self.discriminator.parameters(),lr = 0.00005)# lr=0.00000005)
-        #opt_g = torch.optim.Adam(self.shapr.parameters(), lr=lr_1, betas=(b1_1, b2_1))
-        #opt_d = torch.optim.Adam(self.discriminator.parameters(), lr=lr_2, betas=(b1_2, b2_2))
-        return [opt_s, opt_d], []
+        opt_s = torch.optim.Adam(self.shapr.parameters())  # , lr=0.001)
+        opt_d = torch.optim.Adam(self.discriminator.parameters(), lr=0.00000005)  # 00.00005)
+        scheduler_s = torch.optim.lr_scheduler.ReduceLROnPlateau(opt_s, patience=2)
+        scheduler_d = torch.optim.lr_scheduler.StepLR(opt_d, step_size=5, gamma=0.5)
+        lr_schedulers_s = {"scheduler": scheduler_s, "monitor": "val_loss"}
+        lr_schedulers_d = {"scheduler": scheduler_d, "monitor": "val_loss"}
+        return [opt_s, opt_d], [lr_schedulers_s, lr_schedulers_d]

@@ -98,9 +98,12 @@ def run_train(amp: bool = False, params=None, overrides=None):
             save_top_k=3,
             mode="min",
         )
-        early_stopping_callback = EarlyStopping(monitor='val_loss', patience=5)
+        early_stopping_callback = EarlyStopping(
+            monitor='val_loss', patience=10
+        )
         tb_logger = TensorBoardLogger("logs/")
         wandb_logger = WandbLogger()
+
         SHAPRmodel = LightningSHAPRoptimization(settings, cv_train_filenames, cv_val_filenames)
         SHAPR_trainer = pl.Trainer(
             max_epochs=settings.epochs_SHAPR,
@@ -113,6 +116,11 @@ def run_train(amp: bool = False, params=None, overrides=None):
         torch.save({
             'state_dict': SHAPRmodel.state_dict(),
         }, os.path.join(settings.path, "logs/")+"SHAPR_training.ckpt")
+
+        if settings.epochs_SHAPR > 0:
+            SHAPR_best_model_path = checkpoint_callback.best_model_path
+        else:
+            SHAPR_best_model_path = None
 
         """
         After training SHAPR for the set number of epochs, we train the adverserial model
@@ -127,7 +135,7 @@ def run_train(amp: bool = False, params=None, overrides=None):
             mode="min",
         )
 
-        SHAPR_GANmodel = LightningSHAPR_GANoptimization(settings, cv_train_filenames, cv_val_filenames)
+        SHAPR_GANmodel = LightningSHAPR_GANoptimization(settings, cv_train_filenames, cv_val_filenames, SHAPR_best_model_path)
 
         SHAPR_GAN_trainer = pl.Trainer(
             callbacks=[early_stopping_callback, checkpoint_callback],
