@@ -528,7 +528,6 @@ class LightningSHAPR_GANoptimization(pl.LightningModule):
             g_loss = self.adversarial_loss(self.discriminator(self(images)), valid)
             print("supervised loss:", supervised_loss.item(), "gan loss:", g_loss.item())
             loss = (10 * supervised_loss + g_loss) / 11
-            loss = supervised_loss
             loss += self.topological_step(self(images), true_obj)
             tqdm_dict = {'g_loss': loss}
             output = OrderedDict({
