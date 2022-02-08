@@ -5,6 +5,10 @@ parameters:
     value: "../docs/sample/"
   result_path:
     value: ""
+  epochs_SHAPR:
+    value: 30
+  epochs_cSHAPR:
+    value: 0
   topo_interp:
     values: [8, 16, 32]
   topo_feat_d:
