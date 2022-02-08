@@ -1,21 +1,18 @@
-from shapr.utils import *
 from shapr._settings import SHAPRConfig
-from shapr.data_generator import *
-#from shapr.model import netSHAPR, netDiscriminator
-import torch.optim as optim
-from tqdm import tqdm
-from torch.utils.data import DataLoader, random_split
-from pathlib import Path
-import wandb
-import logging
-import pytorch_lightning as pl
-from model import SHAPR, LightningSHAPRoptimization, LightningSHAPR_GANoptimization
-from data_generator import SHAPRDataset
+
+from model import LightningSHAPRoptimization, LightningSHAPR_GANoptimization
+
+from sklearn.model_selection import KFold
 from sklearn.model_selection import train_test_split
+
+import pytorch_lightning as pl
+
 from pytorch_lightning.callbacks import ModelCheckpoint, EarlyStopping
-import glob
 from pytorch_lightning import loggers as pl_loggers
+
+import os
 import torch
+import wandb
 
 PARAMS = {"num_filters": 10,
       "dropout": 0.
@@ -133,6 +130,7 @@ def run_train(amp: bool = False, params=None):
 
 def run_evaluation():
 
+    settings = SHAPRConfig()
     print(settings)
 
     #TODO
@@ -170,5 +168,3 @@ def run_evaluation():
         imsave(settings.result_path + test_filename, result.astype("uint8"))
         i = i+1        
     '''
-
-
