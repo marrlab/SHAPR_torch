@@ -5,7 +5,7 @@
     "batch_size": 10,
     "epochs_SHAPR":100,
     "epochs_cSHAPR": 100,
-    "topo_lambda": 0,
+    "topo_lambda": 0.0,
     "topo_interp": 16,
     "topo_feat_d": 1
 }
