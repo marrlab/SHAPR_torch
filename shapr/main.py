@@ -36,7 +36,7 @@ def run_train(amp: bool = False, params=None):
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     settings = SHAPRConfig(params=params)
 
-    wandb.init(project="SHAPR_topological", entity="dlmldw", config = params)
+    wandb.init(project="SHAPR_topological", entity="shapr_topological", config = params)
     wandb_logger = WandbLogger(project="SHAPR_topological")
 
     # Handle GPU vs CPU selection
