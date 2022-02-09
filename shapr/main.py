@@ -62,9 +62,6 @@ def run_train(amp: bool = False, params=None, overrides=None):
     # group.
     os.environ["WANDB_RUN_GROUP"] = "experiment-" + wandb.util.generate_id()
 
-    # Single logger is sufficient; else, we get some warnings.
-    wandb_logger = WandbLogger()
-
     for fold, (cv_train_indices, cv_test_indices) in enumerate(kf.split(filenames)):
 
         items = [
@@ -85,6 +82,9 @@ def run_train(amp: bool = False, params=None, overrides=None):
             reinit=True,
             config=config
         )
+
+        # Single logger is sufficient; else, we get some warnings.
+        wandb_logger = WandbLogger()
 
         cv_train_filenames = [str(filenames[i]) for i in cv_train_indices]
         cv_test_filenames = [str(filenames[i]) for i in cv_test_indices]
