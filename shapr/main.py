@@ -7,6 +7,7 @@ from tqdm import tqdm
 from torch.utils.data import DataLoader, random_split
 from pathlib import Path
 import wandb
+from pytorch_lightning.loggers import WandbLogger
 import logging
 import pytorch_lightning as pl
 from model import SHAPR, LightningSHAPRoptimization, LightningSHAPR_GANoptimization
@@ -34,6 +35,9 @@ The filenames of corresponding files in the obj, mask and image ordner are expet
 def run_train(amp: bool = False, params=None):
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     settings = SHAPRConfig(params=params)
+
+    wandb.init(project="SHAPR_topological", entity="dlmldw", config = params)
+    wandb_logger = WandbLogger(project="SHAPR_topological")
 
     # Handle GPU vs CPU selection
     if device == torch.device("cpu"):
@@ -75,7 +79,7 @@ def run_train(amp: bool = False, params=None):
         SHAPR_trainer = pl.Trainer(
             max_epochs=settings.epochs_SHAPR,
             callbacks=[checkpoint_callback,
-            early_stopping_callback], logger=tb_logger,
+            early_stopping_callback], logger=wandb_logger,
             gpus=gpus
         )
         SHAPR_trainer.fit(model= SHAPRmodel)
@@ -102,10 +106,9 @@ def run_train(amp: bool = False, params=None):
         )
 
         SHAPR_GANmodel = LightningSHAPR_GANoptimization(settings, cv_train_filenames, cv_val_filenames, SHAPR_best_model_path)
-
         SHAPR_GAN_trainer = pl.Trainer(
             callbacks=[early_stopping_callback, checkpoint_callback],
-            max_epochs=settings.epochs_cSHAPR,logger=tb_logger,
+            max_epochs=settings.epochs_cSHAPR,logger=wandb_logger,
             gpus=gpus
         )
         SHAPR_GAN_trainer.fit(model=SHAPR_GANmodel)
