@@ -1,5 +1,8 @@
 method: grid
 
+entity: brieck
+project: SHAPR
+
 parameters:
   path:
     value: "../docs/sample/"
@@ -10,10 +13,10 @@ parameters:
   epochs_cSHAPR:
     value: 0
   topo_interp:
-    values: [8, 16, 32]
+    values: [8, 16, 24]
   topo_feat_d:
     values: [0, 1, 2]
   topo_lambda:
-    values: [0.01, 0.1, 0.5, 1.0, 10.0]
+    values: [0.1, 1.0, 10.0]
   
 program: sweep.py
