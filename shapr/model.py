@@ -289,6 +289,10 @@ class LightningSHAPRoptimization(pl.LightningModule):
         # Define learning rate
         self.lr = 0.01
 
+        #loss functions
+        self.dice = Dice_loss()
+        self.volume_error = Volume_error()
+        self.iou_error = IoU_error
         # Required for topological feature calculation. We want cubical
         # complexes because they handle images intrinsically.
         #
@@ -376,9 +380,7 @@ class LightningSHAPRoptimization(pl.LightningModule):
         images, true_obj = train_batch
         pred = self(images)
         loss = self.binary_crossentropy_Dice(pred, true_obj)
-
         loss += self.topological_step(pred, true_obj)
-        #wandb.log({"train/train_loss": loss})
         self.log("train_loss", loss)
         return loss
 
@@ -404,6 +406,13 @@ class LightningSHAPRoptimization(pl.LightningModule):
         dataset = SHAPRDataset(self.path, self.cv_test_filenames, self.random_seed)
         test_loader = DataLoader(dataset)
         return test_loader
+
+    def test_step(self, test_batch, batch_idx):
+        images, true_obj = test_batch
+        pred = self(images)
+        self.log("test_dice", self.dice(pred, true_obj))
+        self.log("test_volume", self.volume_error(pred, true_obj))
+        self.log("test_IoU", self.iou_error(pred, true_obj))
 
 
 # Define GAN
@@ -570,6 +579,13 @@ class LightningSHAPR_GANoptimization(pl.LightningModule):
         loss += self.topological_step(pred, true_obj)
         #wandb.log({"train/val_loss": loss})
         self.log("val_loss", loss)
+
+    def test_step(self, test_batch, batch_idx):
+        images, true_obj = test_batch
+        pred = self(images)
+        self.log("test_dice", self.dice(pred, true_obj))
+        self.log("test_volume", self.volume_error(pred, true_obj))
+        self.log("test_IoU", self.iou_error(pred, true_obj))
 
     def configure_optimizers(self):
         lr_1 = 0.001

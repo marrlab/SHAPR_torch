@@ -25,16 +25,6 @@ class Dice_loss(torch.nn.Module):
         f1 = 2 * prec * rec / (prec + rec + 1e-8)
         return 1 - f1
 
-
-class Volume_error(torch.nn.Module):
-    def init(self):
-        super(Volume_error, self).init()
-
-    def forward(self, y_pred, y_true):
-        y_pred_binary = (y_pred > 0.5).float()
-        y_true_binary = (y_true > 0.5).float()
-        return (torch.sum(y_pred_binary)-torch.sum(y_true_binary))/torch.sum(y_true_binary)
-
 class Volume_error(torch.nn.Module):
     def init(self):
         super(Volume_error, self).init()
