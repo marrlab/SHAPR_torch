@@ -1,5 +1,6 @@
 from shapr._settings import SHAPRConfig
 from shapr.data_generator import get_test_image
+from shapr.metrics import *
 
 from model import LightningSHAPRoptimization, LightningSHAPR_GANoptimization
 
@@ -151,32 +152,50 @@ def run_train(amp: bool = False, params=None, overrides=None):
         The 3D shape of the test data for each fold will be predicted here
         """
         if settings.epochs_cSHAPR > 0:
+            volume_error = []; dice_error = []; IoU_error = []
+            v_error = Volume_error()
+            dice = dice_error()
+            iou = IoU_error()
             with torch.no_grad():
                 SHAPR_GANmodel.eval()
                 for test_file in cv_test_filenames:
-                    image = torch.from_numpy(get_test_image(settings, test_file))
+                    image, gt = torch.from_numpy(get_test_image(settings, test_file))
                     img = image.float()
                     output = SHAPR_GANmodel(img)
+                    volume_error.append(v_error(output, gt))
+                    dice_error.append(dice(output, gt))
+                    IoU_error.append(iou(output, gt))
                     os.makedirs(settings.result_path, exist_ok=True)
                     prediction = output.cpu().detach().numpy()
                     imsave(os.path.join(settings.result_path, test_file), (255 * prediction).astype("uint8"))
-
+            wandb_logger.log("volume_error", volume_error.mean())
+            wandb_logger.log("IoU_error", IoU_error.mean())
+            wandb_logger.log("dice_error", dice_error.mean())
         else:
-            # Skip storing results if no path has been set. This is
-            # useful for sweeps.
-            if len(settings.result_path) > 0:
-                with torch.no_grad():
-                    SHAPRmodel.eval()
-                    for test_file in cv_test_filenames:
-                        image = torch.from_numpy(get_test_image(settings, test_file))
-                        img = image.float()
-                        output = SHAPRmodel(img)
-                        os.makedirs(settings.result_path, exist_ok=True)
-                        prediction = output.cpu().detach().numpy()
-                        imsave(os.path.join(settings.result_path, test_file), (255 * prediction).astype("uint8"))
-
+            volume_error = []
+            dice_error = []
+            IoU_error = []
+            v_error = Volume_error()
+            dice = dice_error()
+            iou = IoU_error()
+            with torch.no_grad():
+                SHAPR_GANmodel.eval()
+                for test_file in cv_test_filenames:
+                    image, gt = torch.from_numpy(get_test_image(settings, test_file))
+                    img = image.float()
+                    output = SHAPR_GANmodel(img)
+                    volume_error.append(v_error(output, gt))
+                    dice_error.append(dice(output, gt))
+                    IoU_error.append(iou(output, gt))
+                    os.makedirs(settings.result_path, exist_ok=True)
+                    prediction = output.cpu().detach().numpy()
+                    imsave(os.path.join(settings.result_path, test_file), (255 * prediction).astype("uint8"))
+            wandb_logger.log("volume_error", volume_error.mean())
+            wandb_logger.log("IoU_error", IoU_error.mean())
+            wandb_logger.log("dice_error", dice_error.mean())
+        
+        # Finish current `wandb` run; this enables grouping later on.
         run.finish()
-
 
 def run_evaluation():
 

@@ -1,6 +1,6 @@
 {
-    "path": "/media/dominik/LaCie/SHAPR_pytorch/Organoid/",
-    "result_path": "/media/dominik/LaCie/SHAPR_pytorch/Organoid/results_pytorch_topo_adverserial_early_stop_30/",
+    "path": "/media/dominik/LaCie/SHAPR_pytorch/Organoid_small/",
+    "result_path": "/media/dominik/LaCie/SHAPR_pytorch/Organoid_small/test/",
     "random_seed" : 0,
     "batch_size": 10,
     "epochs_SHAPR":100,
