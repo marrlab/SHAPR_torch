@@ -266,7 +266,7 @@ class LightningSHAPRoptimization(pl.LightningModule):
         return {
             'optimizer': opt,
             'lr_scheduler': scheduler,
-            'monitor': 'val_loss'
+            'monitor': 'val/loss'
         }
 
     def MSEloss(self, y_true, y_pred):
@@ -562,6 +562,6 @@ class LightningSHAPR_GANoptimization(pl.LightningModule):
         opt_d = torch.optim.Adam(self.discriminator.parameters(), lr=0.000005)  # 00.00005)
         scheduler_s = torch.optim.lr_scheduler.ReduceLROnPlateau(opt_s, patience=2)
         scheduler_d = torch.optim.lr_scheduler.StepLR(opt_d, step_size=5, gamma=0.5)
-        lr_schedulers_s = {"scheduler": scheduler_s, "monitor": "val_loss"}
-        lr_schedulers_d = {"scheduler": scheduler_d, "monitor": "val_loss"}
+        lr_schedulers_s = {"scheduler": scheduler_s, "monitor": "val/loss"}
+        lr_schedulers_d = {"scheduler": scheduler_d, "monitor": "val/loss"}
         return [opt_s, opt_d], [lr_schedulers_s, lr_schedulers_d]
