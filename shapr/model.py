@@ -8,6 +8,7 @@ from metrics import Dice_loss
 from collections import OrderedDict
 import os
 import wandb
+from metrics import *
 
 from torch_topological.nn import CubicalComplex
 from torch_topological.nn import WassersteinDistance
@@ -527,7 +528,9 @@ class LightningSHAPR_GANoptimization(pl.LightningModule):
 
         if optimizer_idx == 0:
             supervised_loss = self.binary_crossentropy_Dice(self(images), true_obj)
-            g_loss = self.adversarial_loss(self.discriminator(self(images)), valid)
+            fake_image = self(images)
+            fake_image_binary = (fake_image > 0.5).float()
+            g_loss = self.adversarial_loss(self.discriminator(fake_image_binary), valid)
             print("supervised loss:", supervised_loss.item(), "gan loss:", g_loss.item())
             loss = (10 * supervised_loss + g_loss) / 11
             loss += self.topological_step(self(images), true_obj)
@@ -545,7 +548,9 @@ class LightningSHAPR_GANoptimization(pl.LightningModule):
             real_loss = self.adversarial_loss(self.discriminator(true_obj), valid)
 
             # how well can it label as fake?
-            fake_loss = self.adversarial_loss(self.discriminator(self(images).detach()), fake)
+            fake_image = self(images)
+            fake_image_binary = (fake_image > 0.5).float()
+            fake_loss = self.adversarial_loss(self.discriminator(fake_image_binary.detach()), fake)
 
             # test discriminator on fake images
             loss = (real_loss + fake_loss) / 2
