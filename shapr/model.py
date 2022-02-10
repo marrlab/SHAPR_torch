@@ -4,7 +4,7 @@ import torch.nn.functional as F
 import pytorch_lightning as pl
 from data_generator import SHAPRDataset
 from torch.utils.data import DataLoader, random_split
-from metrics import BCEDiceLoss
+from metrics import Dice_loss
 from collections import OrderedDict
 import os
 import wandb
@@ -288,9 +288,6 @@ class LightningSHAPRoptimization(pl.LightningModule):
         # Define learning rate
         self.lr = 0.01
 
-        # Defining loss
-        self.BCEDiceLoss = BCEDiceLoss(0.5, 0.5, 0)
-
         # Required for topological feature calculation. We want cubical
         # complexes because they handle images intrinsically.
         #
@@ -327,9 +324,9 @@ class LightningSHAPRoptimization(pl.LightningModule):
     def binary_crossentropy_Dice(self, y_pred, y_true):
         y_pred = torch.squeeze(y_pred)
         y_true = torch.squeeze(y_true)
-        MSE = torch.nn.MSELoss()
-        return MSE(y_true, y_pred)
-        #return self.BCEDiceLoss(y_pred, y_true)
+        dice_loss = Dice_loss()
+        BCE = nn.BCEWithLogitsLoss()
+        return dice_loss(y_true, y_pred) + BCE(y_true, y_pred)
 
     def topological_step(self, pred_obj, true_obj):
         """Calculate topological features and adjust loss."""
@@ -370,7 +367,7 @@ class LightningSHAPRoptimization(pl.LightningModule):
             self.topo_loss(pred_batch, true_batch)
             for pred_batch, true_batch in zip(pers_info_pred, pers_info_true)
         ])
-        wandb.log({"train/topo_loss": topo_loss.mean()})
+        #wandb.log({"train/topo_loss": topo_loss.mean()})
         self.log("topo_loss", topo_loss.mean()),
         return self.topo_lambda * topo_loss.mean()
 
@@ -380,7 +377,7 @@ class LightningSHAPRoptimization(pl.LightningModule):
         loss = self.binary_crossentropy_Dice(pred, true_obj)
 
         loss += self.topological_step(pred, true_obj)
-        wandb.log({"train/train_loss": loss})
+        #wandb.log({"train/train_loss": loss})
         self.log("train_loss", loss)
         return loss
 
@@ -389,7 +386,7 @@ class LightningSHAPRoptimization(pl.LightningModule):
         pred = self(images)
         loss = self.binary_crossentropy_Dice(pred, true_obj)
         loss += self.topological_step(pred, true_obj)
-        wandb.log({"train/val_loss": loss})
+        #wandb.log({"train/val_loss": loss})
         self.log("val_loss", loss)
 
     def train_dataloader(self):
@@ -442,7 +439,6 @@ class LightningSHAPR_GANoptimization(pl.LightningModule):
         self.discriminator = Discriminator()
         self.lr = 0.0001
         self.loss = nn.CrossEntropyLoss()
-        self.BCEDiceLoss = BCEDiceLoss(0.5, 0.5, 0)
 
     def forward(self, z):
         return self.shapr(z)
@@ -459,7 +455,9 @@ class LightningSHAPR_GANoptimization(pl.LightningModule):
     def binary_crossentropy_Dice(self, y_pred, y_true):
         y_pred = torch.squeeze(y_pred)
         y_true = torch.squeeze(y_true)
-        return self.BCEDiceLoss(y_pred, y_true)
+        dice_loss = Dice_loss()
+        BCE = nn.BCEWithLogitsLoss()
+        return dice_loss(y_true, y_pred) + BCE(y_true, y_pred)
 
     def train_dataloader(self):
         dataset = SHAPRDataset(self.path, self.cv_train_filenames, self.random_seed)
@@ -515,7 +513,7 @@ class LightningSHAPR_GANoptimization(pl.LightningModule):
             self.topo_loss(pred_batch, true_batch)
             for pred_batch, true_batch in zip(pers_info_pred, pers_info_true)
         ])
-        wandb.log({"train/topo_loss": topo_loss.mean()})
+        #wandb.log({"train/topo_loss": topo_loss.mean()})
         self.log("topo_loss", topo_loss.mean()),
         return self.topo_lambda * topo_loss.mean()
 
@@ -565,7 +563,7 @@ class LightningSHAPR_GANoptimization(pl.LightningModule):
         pred = self(images)
         loss = self.binary_crossentropy_Dice(pred, true_obj)
         loss += self.topological_step(pred, true_obj)
-        wandb.log({"train/val_loss": loss})
+        #wandb.log({"train/val_loss": loss})
         self.log("val_loss", loss)
 
     def configure_optimizers(self):
@@ -576,7 +574,7 @@ class LightningSHAPR_GANoptimization(pl.LightningModule):
         b1_2 = 0.5
         b2_2 = 0.999
         opt_s = torch.optim.Adam(self.shapr.parameters())  # , lr=0.001)
-        opt_d = torch.optim.Adam(self.discriminator.parameters(), lr=0.00000005)  # 00.00005)
+        opt_d = torch.optim.Adam(self.discriminator.parameters(), lr=0.000005)  # 00.00005)
         scheduler_s = torch.optim.lr_scheduler.ReduceLROnPlateau(opt_s, patience=2)
         scheduler_d = torch.optim.lr_scheduler.StepLR(opt_d, step_size=5, gamma=0.5)
         lr_schedulers_s = {"scheduler": scheduler_s, "monitor": "val_loss"}
