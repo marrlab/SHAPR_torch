@@ -76,8 +76,8 @@ def run_train(amp: bool = False, params=None, overrides=None):
         config['fold'] = fold
 
         run = wandb.init(
-            project="SHAPR",
-            entity="brieck",
+            project="SHAPR_topological",
+            entity="shapr_topological",
             job_type="train",
             reinit=True,
             config=config
