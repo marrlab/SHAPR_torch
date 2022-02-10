@@ -3,8 +3,8 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 class Dice_loss(torch.nn.Module):
-    def init(self):
-        super(Dice_loss, self).init()
+    def __init__(self):
+        super(Dice_loss, self).__init__()
 
     def forward(self, y_pred, y_true):
         ones = torch.ones_like(y_true)
@@ -27,8 +27,8 @@ class Dice_loss(torch.nn.Module):
 
 
 class Volume_error(torch.nn.Module):
-    def init(self):
-        super(Volume_error, self).init()
+    def __init__(self):
+        super(Volume_error, self).__init__()
 
     def forward(self, y_pred, y_true):
         y_pred_binary = (y_pred > 0.5).float()
@@ -36,8 +36,8 @@ class Volume_error(torch.nn.Module):
         return (torch.sum(y_pred_binary)-torch.sum(y_true_binary))/torch.sum(y_true_binary)
 
 class Volume_error(torch.nn.Module):
-    def init(self):
-        super(Volume_error, self).init()
+    def __init__(self):
+        super(Volume_error, self).__init__()
 
     def forward(self, y_pred, y_true):
         y_pred_binary = (y_pred > 0.5).float()
@@ -45,8 +45,8 @@ class Volume_error(torch.nn.Module):
         return (torch.count_nonzero(y_pred_binary)-torch.count_nonzero(y_true_binary))/torch.count_nonzero(y_true_binary)
 
 class IoU_error(torch.nn.Module):
-    def init(self):
-        super(IoU_error, self).init()
+    def __init__(self):
+        super(IoU_error, self).__init__()
 
     def forward(self, y_pred, y_true):
         y_pred_binary = (y_pred > 0.5).float()

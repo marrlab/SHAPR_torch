@@ -1,6 +1,6 @@
 from shapr._settings import SHAPRConfig
 from shapr.data_generator import get_test_image
-from shapr.metrics import *
+from shapr.metrics import Dice_loss, IoU_error, Volume_error
 
 from model import LightningSHAPRoptimization, LightningSHAPR_GANoptimization
 
@@ -14,6 +14,8 @@ import pytorch_lightning as pl
 from pytorch_lightning.callbacks import ModelCheckpoint, EarlyStopping
 from pytorch_lightning.loggers import TensorBoardLogger 
 from pytorch_lightning.loggers import WandbLogger
+
+import numpy as np
 
 import os
 import torch
@@ -152,7 +154,9 @@ def run_train(amp: bool = False, params=None, overrides=None):
         The 3D shape of the test data for each fold will be predicted here
         """
         if settings.epochs_cSHAPR > 0:
-            volume_error = []; dice_error = []; IoU_error = []
+            volume_error = []
+            dice_error = []
+            iou_error = []
             v_error = Volume_error()
             dice = Dice_loss()
             iou = IoU_error()
@@ -174,26 +178,34 @@ def run_train(amp: bool = False, params=None, overrides=None):
         else:
             volume_error = []
             dice_error = []
-            IoU_error = []
+            iou_error = []
             v_error = Volume_error()
             dice = Dice_loss()
             iou = IoU_error()
             with torch.no_grad():
-                SHAPR_GANmodel.eval()
+                SHAPRmodel.eval()
                 for test_file in cv_test_filenames:
-                    image, gt = torch.from_numpy(get_test_image(settings, test_file))
+                    image, gt = get_test_image(settings, test_file)
+
+                    image = torch.from_numpy(image)
+                    gt = torch.from_numpy(gt)
+
                     img = image.float()
-                    output = SHAPR_GANmodel(img)
+                    output = SHAPRmodel(img)
+                    output = output.squeeze()
                     volume_error.append(v_error(output, gt))
                     dice_error.append(dice(output, gt))
-                    IoU_error.append(iou(output, gt))
+                    iou_error.append(iou(output, gt))
                     os.makedirs(settings.result_path, exist_ok=True)
                     prediction = output.cpu().detach().numpy()
                     imsave(os.path.join(settings.result_path, test_file), (255 * prediction).astype("uint8"))
-            wandb_logger.log("volume_error", volume_error.mean())
-            wandb_logger.log("IoU_error", IoU_error.mean())
-            wandb_logger.log("dice_error", dice_error.mean())
-        
+
+            wandb.log({
+                "volume_error": np.mean(volume_error),
+                "IoU_error": np.mean(iou_error),
+                "dice_error": np.mean(dice_error),
+            })
+
         # Finish current `wandb` run; this enables grouping later on.
         run.finish()
 
