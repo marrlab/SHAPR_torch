@@ -154,7 +154,7 @@ def run_train(amp: bool = False, params=None, overrides=None):
         if settings.epochs_cSHAPR > 0:
             volume_error = []; dice_error = []; IoU_error = []
             v_error = Volume_error()
-            dice = dice_error()
+            dice = Dice_loss()
             iou = IoU_error()
             with torch.no_grad():
                 SHAPR_GANmodel.eval()
@@ -176,7 +176,7 @@ def run_train(amp: bool = False, params=None, overrides=None):
             dice_error = []
             IoU_error = []
             v_error = Volume_error()
-            dice = dice_error()
+            dice = Dice_loss()
             iou = IoU_error()
             with torch.no_grad():
                 SHAPR_GANmodel.eval()
