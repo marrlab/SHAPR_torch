@@ -102,7 +102,7 @@ def run_train(amp: bool = False, params=None, overrides=None):
             mode="min",
         )
         early_stopping_callback = EarlyStopping(
-            monitor='val_loss', patience=10
+            monitor='val_loss', patience=20
         )
         tb_logger = TensorBoardLogger("logs/")
 
@@ -127,7 +127,7 @@ def run_train(amp: bool = False, params=None, overrides=None):
         """
         After training SHAPR for the set number of epochs, we train the adverserial model
         """
-        early_stopping_callback = EarlyStopping(monitor='val_loss', patience=5)
+        early_stopping_callback = EarlyStopping(monitor='val_loss', patience=30)
         checkpoint_callback = ModelCheckpoint(
             monitor="val_loss",
             dirpath=os.path.join(settings.path, "logs"),
@@ -138,7 +138,6 @@ def run_train(amp: bool = False, params=None, overrides=None):
         )
 
         SHAPR_GANmodel = LightningSHAPR_GANoptimization(settings, cv_train_filenames, cv_val_filenames, SHAPR_best_model_path)
-
         SHAPR_GAN_trainer = pl.Trainer(
             callbacks=[early_stopping_callback, checkpoint_callback],
             max_epochs=settings.epochs_cSHAPR,

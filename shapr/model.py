@@ -7,6 +7,7 @@ from torch.utils.data import DataLoader, random_split
 from metrics import BCEDiceLoss
 from collections import OrderedDict
 import os
+import wandb
 
 from torch_topological.nn import CubicalComplex
 from torch_topological.nn import WassersteinDistance
@@ -279,7 +280,9 @@ class LightningSHAPRoptimization(pl.LightningModule):
     def binary_crossentropy_Dice(self, y_pred, y_true):
         y_pred = torch.squeeze(y_pred)
         y_true = torch.squeeze(y_true)
-        return self.BCEDiceLoss(y_pred, y_true)
+        MSE = torch.nn.MSELoss()
+        return MSE(y_true, y_pred)
+        #return self.BCEDiceLoss(y_pred, y_true)
 
     def topological_step(self, pred_obj, true_obj):
         """Calculate topological features and adjust loss."""
@@ -318,7 +321,7 @@ class LightningSHAPRoptimization(pl.LightningModule):
             self.topo_loss(pred_batch, true_batch)
             for pred_batch, true_batch in zip(pers_info_pred, pers_info_true)
         ])
-
+        wandb.log({"train/topo_loss": topo_loss.mean()})
         self.log("topo_loss", topo_loss.mean()),
         return self.topo_lambda * topo_loss.mean()
 
@@ -328,7 +331,7 @@ class LightningSHAPRoptimization(pl.LightningModule):
         loss = self.binary_crossentropy_Dice(pred, true_obj)
 
         loss += self.topological_step(pred, true_obj)
-
+        wandb.log({"train/train_loss": loss})
         self.log("train_loss", loss)
         return loss
 
@@ -337,6 +340,7 @@ class LightningSHAPRoptimization(pl.LightningModule):
         pred = self(images)
         loss = self.binary_crossentropy_Dice(pred, true_obj)
         loss += self.topological_step(pred, true_obj)
+        wandb.log({"train/val_loss": loss})
         self.log("val_loss", loss)
 
     def train_dataloader(self):
@@ -472,7 +476,7 @@ class LightningSHAPR_GANoptimization(pl.LightningModule):
             self.topo_loss(pred_batch, true_batch)
             for pred_batch, true_batch in zip(pers_info_pred, pers_info_true)
         ])
-
+        wandb.log({"train/topo_loss": topo_loss.mean()})
         self.log("topo_loss", topo_loss.mean()),
         return self.topo_lambda * topo_loss.mean()
 
@@ -522,6 +526,7 @@ class LightningSHAPR_GANoptimization(pl.LightningModule):
         pred = self(images)
         loss = self.binary_crossentropy_Dice(pred, true_obj)
         loss += self.topological_step(pred, true_obj)
+        wandb.log({"train/val_loss": loss})
         self.log("val_loss", loss)
 
     def configure_optimizers(self):
