@@ -329,7 +329,7 @@ class LightningSHAPRoptimization(pl.LightningModule):
         loss = self.binary_crossentropy_Dice(pred, true_obj)
 
         loss += self.topological_step(pred, true_obj)
-        self.log("train_loss", loss)
+        self.log("train_loss", loss, on_epoch=True, on_step=True)
         return loss
 
     def validation_step(self, val_batch, batch_idx):
@@ -337,7 +337,7 @@ class LightningSHAPRoptimization(pl.LightningModule):
         pred = self(images)
         loss = self.binary_crossentropy_Dice(pred, true_obj)
         loss += self.topological_step(pred, true_obj)
-        self.log("val_loss", loss)
+        self.log("val_loss", loss, on_epoch=True)
 
     def train_dataloader(self):
         dataset = SHAPRDataset(self.path, self.cv_train_filenames, self.random_seed)

@@ -59,33 +59,32 @@ def run_train(amp: bool = False, params=None, overrides=None):
     kf = KFold(n_splits=5)
     os.makedirs(os.path.join(settings.path, "logs"), exist_ok=True)
 
-    # Make sure that all of these runs get assigned to the same run
-    # group.
-    os.environ["WANDB_RUN_GROUP"] = "experiment-" + wandb.util.generate_id()
+    items = [
+        (k, v) for k, v in settings.__dict__.items()
+            if not k.startswith('_')
+    ]
+
+    # Prepare configuration for `wandb` client. Additional values can be
+    # added on a per-fold basis.
+    config = {
+        k: v for k, v in items
+    }
+
+    group = wandb.util.generate_id()
 
     for fold, (cv_train_indices, cv_test_indices) in enumerate(kf.split(filenames)):
-
-        items = [
-            (k, v) for k, v in settings.__dict__.items()
-            if not k.startswith('_')
-        ]
-
-        config = {
-            k: v for k, v in items
-        }
-
         config['fold'] = fold
+
+        wandb_logger = WandbLogger()
 
         run = wandb.init(
             project="SHAPR_topological",
             entity="shapr_topological",
             job_type="train",
+            group=group,
+            config=config,
             reinit=True,
-            config=config
         )
-
-        # Single logger is sufficient; else, we get some warnings.
-        wandb_logger = WandbLogger()
 
         cv_train_filenames = [str(filenames[i]) for i in cv_train_indices]
         cv_test_filenames = [str(filenames[i]) for i in cv_test_indices]
@@ -113,6 +112,7 @@ def run_train(amp: bool = False, params=None, overrides=None):
             callbacks=[checkpoint_callback,
             early_stopping_callback],
             logger=[tb_logger, wandb_logger],
+            log_every_n_steps=5,
             gpus=gpus
         )
         SHAPR_trainer.fit(model= SHAPRmodel)
