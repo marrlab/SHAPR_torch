@@ -275,13 +275,14 @@ class SHAPR(nn.Module):
 
 
 class LightningSHAPRoptimization(pl.LightningModule):
-    def __init__(self, settings, cv_train_filenames, cv_val_filenames):
+    def __init__(self, settings, cv_train_filenames, cv_val_filenames, cv_test_filenames):
         super(LightningSHAPRoptimization, self).__init__()
 
         self.random_seed = settings.random_seed
         self.path = settings.path
         self.cv_train_filenames = cv_train_filenames
         self.cv_val_filenames = cv_val_filenames
+        self.cv_test_filenames = cv_test_filenames
         self.batch_size = settings.batch_size
         # Define model
         self.shapr = SHAPR()
@@ -292,7 +293,7 @@ class LightningSHAPRoptimization(pl.LightningModule):
         #loss functions
         self.dice = Dice_loss()
         self.volume_error = Volume_error()
-        self.iou_error = IoU_error
+        self.iou_error = IoU_error()
         # Required for topological feature calculation. We want cubical
         # complexes because they handle images intrinsically.
         #
@@ -410,22 +411,29 @@ class LightningSHAPRoptimization(pl.LightningModule):
     def test_step(self, test_batch, batch_idx):
         images, true_obj = test_batch
         pred = self(images)
-        self.log("test_dice", self.dice(pred, true_obj))
-        self.log("test_volume", self.volume_error(pred, true_obj))
-        self.log("test_IoU", self.iou_error(pred, true_obj))
+        self.log("test_dice_errror", self.dice(pred, true_obj))
+        self.log("test_volume_errror", self.volume_error(pred, true_obj))
+        self.log("test_IoU_errror", self.iou_error(pred, true_obj))
 
 
 # Define GAN
 class LightningSHAPR_GANoptimization(pl.LightningModule):
-    def __init__(self, settings, cv_train_filenames, cv_val_filenames, SHAPR_best_model_path):
+    def __init__(self, settings, cv_train_filenames, cv_val_filenames,cv_test_filenames,  SHAPR_best_model_path):
         super(LightningSHAPR_GANoptimization, self).__init__()
 
         self.random_seed = settings.random_seed
         self.path = settings.path
         self.cv_train_filenames = cv_train_filenames
         self.cv_val_filenames = cv_val_filenames
+        self.cv_test_filenames = cv_test_filenames
         self.batch_size = settings.batch_size
         self.SHAPR_best_model_path = SHAPR_best_model_path
+
+        # loss functions
+        self.dice = Dice_loss()
+        self.volume_error = Volume_error()
+        self.iou_error = IoU_error()
+
         # Define model
         #self.shapr = SHAPR()
 
@@ -583,9 +591,9 @@ class LightningSHAPR_GANoptimization(pl.LightningModule):
     def test_step(self, test_batch, batch_idx):
         images, true_obj = test_batch
         pred = self(images)
-        self.log("test_dice", self.dice(pred, true_obj))
-        self.log("test_volume", self.volume_error(pred, true_obj))
-        self.log("test_IoU", self.iou_error(pred, true_obj))
+        self.log("test_dice_errror", self.dice(pred, true_obj))
+        self.log("test_volume_errror", self.volume_error(pred, true_obj))
+        self.log("test_IoU_errror", self.iou_error(pred, true_obj))
 
     def configure_optimizers(self):
         lr_1 = 0.001
@@ -595,7 +603,7 @@ class LightningSHAPR_GANoptimization(pl.LightningModule):
         b1_2 = 0.5
         b2_2 = 0.999
         opt_s = torch.optim.Adam(self.shapr.parameters())  # , lr=0.001)
-        opt_d = torch.optim.Adam(self.discriminator.parameters(), lr=0.000005)  # 00.00005)
+        opt_d = torch.optim.Adam(self.discriminator.parameters(), lr=0.0000005)  # 00.00005)
         scheduler_s = torch.optim.lr_scheduler.ReduceLROnPlateau(opt_s, patience=2)
         scheduler_d = torch.optim.lr_scheduler.StepLR(opt_d, step_size=5, gamma=0.5)
         lr_schedulers_s = {"scheduler": scheduler_s, "monitor": "val_loss"}

@@ -75,7 +75,7 @@ def run_train(amp: bool = False, params=None):
         )
         early_stopping_callback = EarlyStopping(monitor='val_loss', patience=20)
         tb_logger = pl_loggers.TensorBoardLogger("logs/")
-        SHAPRmodel = LightningSHAPRoptimization(settings, cv_train_filenames, cv_val_filenames)
+        SHAPRmodel = LightningSHAPRoptimization(settings, cv_train_filenames, cv_val_filenames, cv_test_filenames)
         SHAPR_trainer = pl.Trainer(
             max_epochs=settings.epochs_SHAPR,
             callbacks=[checkpoint_callback,
@@ -105,7 +105,7 @@ def run_train(amp: bool = False, params=None):
             mode="min",
         )
 
-        SHAPR_GANmodel = LightningSHAPR_GANoptimization(settings, cv_train_filenames, cv_val_filenames, SHAPR_best_model_path)
+        SHAPR_GANmodel = LightningSHAPR_GANoptimization(settings, cv_train_filenames, cv_val_filenames, cv_test_filenames, SHAPR_best_model_path)
         SHAPR_GAN_trainer = pl.Trainer(
             callbacks=[early_stopping_callback, checkpoint_callback],
             max_epochs=settings.epochs_cSHAPR,logger=wandb_logger,
@@ -117,6 +117,7 @@ def run_train(amp: bool = False, params=None):
         The 3D shape of the test data for each fold will be predicted here
         """
         if settings.epochs_cSHAPR > 0:
+            SHAPR_GAN_trainer.test(model=SHAPR_GANmodel)
             volume_error = []; dice_error = []; IoU_error = []
             v_error = Volume_error()
             dice = dice_error()
@@ -137,6 +138,7 @@ def run_train(amp: bool = False, params=None):
             wandb.log("IoU_error", IoU_error.mean())
             wandb.log("dice_error", dice_error.mean())
         else:
+            SHAPR_trainer.test(model= SHAPRmodel)
             volume_error = [];
             dice_error = [];
             IoU_error = []
