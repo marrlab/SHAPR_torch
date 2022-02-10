@@ -36,9 +36,10 @@ def run_train(amp: bool = False, params=None, overrides=None):
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     settings = SHAPRConfig(params=params)
 
-    # Handle overrides by user
-    for k, v in overrides.items():
-        settings.__setattr__(k, v)
+    if overrides is not None:
+        # Handle overrides by user
+        for k, v in overrides.items():
+            settings.__setattr__(k, v)
 
     # Handle GPU vs CPU selection
     if device == torch.device("cpu"):
