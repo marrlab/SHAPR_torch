@@ -10,11 +10,11 @@ if [ -z "$1" ]; then
 fi
 
 for i in `seq 27`; do
-  sbatch -p interactive_gpu_p   \
+  sbatch -p gpu_p               \
          -J ${NAME}             \
          -o "${NAME}_%j.out"    \
          --gres=gpu:1           \
-         --qos=interactive_gpu  \
+         --qos=gpu              \
          --cpus-per-task=4      \
          --mem=4G               \
          --nice=10000           \
