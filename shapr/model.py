@@ -7,11 +7,13 @@ from torch.utils.data import DataLoader, random_split
 from metrics import Dice_loss
 from collections import OrderedDict
 import os
-import wandb
+
 from metrics import *
 
 from torch_topological.nn import CubicalComplex
 from torch_topological.nn import WassersteinDistance
+
+from torch_topological.nn.data import batch_iter
 
 
 class EncoderBlock(nn.Module):
@@ -148,55 +150,6 @@ class DiscriminatorOut(nn.Module):
         return self.disc_out(x)
 
 
-class SHAPR(nn.Module):
-    def __init__(self):
-        super(SHAPR, self).__init__()
-        n_filters = 10
-        self.conv1 = EncoderBlock(2, n_filters)
-        self.down1 = Down122()
-        self.conv2 = EncoderBlock(n_filters, n_filters * 2)
-        self.down2 = Down122()
-        self.conv3 = EncoderBlock(n_filters * 2, n_filters * 4)
-        self.encout = EncoderOut(n_filters * 4, n_filters * 8)
-
-        self.conv4 = DecoderBlock(n_filters * 8, n_filters * 8)
-        self.up4 = Up211(n_filters * 8, n_filters * 8)
-        self.conv5 = DecoderBlock(n_filters * 8, n_filters * 8)
-        self.up5 = Up211(n_filters * 8, n_filters * 8)
-        self.conv6 = DecoderBlock(n_filters * 8, n_filters * 4)
-        self.up6 = Up222(n_filters * 4, n_filters * 4)
-        self.conv7 = DecoderBlock(n_filters * 4, n_filters * 4)
-        self.up7 = Up211(n_filters * 4, n_filters * 4)
-        self.conv8 = DecoderBlock(n_filters * 4, n_filters * 2)
-        self.up8 = Up211(n_filters * 2, n_filters * 2)
-        self.conv9 = DecoderBlock(n_filters * 2, n_filters)
-        self.up9 = Up222(n_filters, n_filters)
-        self.conv10 = DecoderBlock(n_filters, n_filters)
-        self.decout = DecoderOut(n_filters, 1)
-
-    def forward(self, x_in):
-        x = self.conv1(x_in)
-        x = self.down1(x)
-        x = self.conv2(x)
-        x = self.down2(x)
-        x = self.conv3(x)
-        x_enc = self.encout(x)
-        x = self.conv4(x_enc)
-        x = self.up4(x)
-        x = self.conv5(x)
-        x = self.up5(x)
-        x = self.conv6(x)
-        x = self.up6(x)
-        x = self.conv7(x)
-        x = self.up7(x)
-        x = self.conv8(x)
-        x = self.up8(x)
-        x = self.conv9(x)
-        x = self.up9(x)
-        x_dec = self.decout(x)
-        return x_dec
-
-
 class Discriminator(nn.Module):
     def __init__(self):
         super(Discriminator, self).__init__()
@@ -318,7 +271,7 @@ class LightningSHAPRoptimization(pl.LightningModule):
         return {
             'optimizer': opt,
             'lr_scheduler': scheduler,
-            'monitor': 'val_loss'
+            'monitor': 'val/combined_loss'
         }
 
     def MSEloss(self, y_true, y_pred):
@@ -360,38 +313,57 @@ class LightningSHAPRoptimization(pl.LightningModule):
         pers_info_true = self.cubical_complex(true_obj_.squeeze())
 
         pers_info_pred = [
-            [x__ for x__ in x_ if x__.dimension == self.topo_feat_d]
-            for x_ in pers_info_pred
+            x for x in batch_iter(pers_info_pred, dim=self.topo_feat_d)
         ]
 
         pers_info_true = [
-            [x__ for x__ in x_ if x__.dimension == self.topo_feat_d]
-            for x_ in pers_info_true
+            x for x in batch_iter(pers_info_true, dim=self.topo_feat_d)
         ]
 
         topo_loss = torch.stack([
             self.topo_loss(pred_batch, true_batch)
             for pred_batch, true_batch in zip(pers_info_pred, pers_info_true)
         ])
-        #wandb.log({"train/topo_loss": topo_loss.mean()})
-        self.log("topo_loss", topo_loss.mean()),
+
         return self.topo_lambda * topo_loss.mean()
 
     def training_step(self, train_batch, batch_idx):
         images, true_obj = train_batch
         pred = self(images)
         loss = self.binary_crossentropy_Dice(pred, true_obj)
-        loss += self.topological_step(pred, true_obj)
-        self.log("train_loss", loss)
+
+        self.log("train/supervised_loss", loss, on_epoch=True, on_step=True)
+
+        topo_loss = self.topological_step(pred, true_obj)
+
+        self.log(
+            "train/topo_loss",
+            topo_loss,
+            on_epoch=True,
+            on_step=True
+        )
+
+        loss += topo_loss
+        self.log("train/combined_loss", loss, on_epoch=True, on_step=True)
         return loss
 
     def validation_step(self, val_batch, batch_idx):
         images, true_obj = val_batch
         pred = self(images)
         loss = self.binary_crossentropy_Dice(pred, true_obj)
-        loss += self.topological_step(pred, true_obj)
-        #wandb.log({"train/val_loss": loss})
-        self.log("val_loss", loss)
+
+        self.log("val/supervised_loss", loss, on_epoch=True, on_step=True)
+
+        topo_loss = self.topological_step(pred, true_obj)
+
+        self.log(
+            "val/topo_loss",
+            topo_loss,
+            on_epoch=True,
+        )
+
+        loss += topo_loss
+        self.log("val/combined_loss", loss, on_epoch=True)
 
     def train_dataloader(self):
         dataset = SHAPRDataset(self.path, self.cv_train_filenames, self.random_seed)
@@ -400,7 +372,12 @@ class LightningSHAPRoptimization(pl.LightningModule):
 
     def val_dataloader(self):
         dataset = SHAPRDataset(self.path, self.cv_val_filenames, self.random_seed)
-        val_loader = DataLoader(dataset, batch_size=self.batch_size, pin_memory=True, shuffle=True)
+        val_loader = DataLoader(
+            dataset,
+            batch_size=self.batch_size,
+            pin_memory=True,
+            shuffle=False
+        )
         return val_loader
 
     def test_dataloader(self):
@@ -484,7 +461,12 @@ class LightningSHAPR_GANoptimization(pl.LightningModule):
 
     def val_dataloader(self):
         dataset = SHAPRDataset(self.path, self.cv_val_filenames, self.random_seed)
-        val_loader = DataLoader(dataset, batch_size=self.batch_size, pin_memory=True, shuffle=True)
+        val_loader = DataLoader(
+            dataset,
+            batch_size=self.batch_size,
+            pin_memory=True,
+            shuffle=False
+        )
         return val_loader
 
     def test_dataloader(self):
@@ -531,8 +513,7 @@ class LightningSHAPR_GANoptimization(pl.LightningModule):
             self.topo_loss(pred_batch, true_batch)
             for pred_batch, true_batch in zip(pers_info_pred, pers_info_true)
         ])
-        #wandb.log({"train/topo_loss": topo_loss.mean()})
-        self.log("topo_loss", topo_loss.mean()),
+
         return self.topo_lambda * topo_loss.mean()
 
     def training_step(self, train_batch, batch_idx, optimizer_idx):
@@ -545,12 +526,18 @@ class LightningSHAPR_GANoptimization(pl.LightningModule):
 
         if optimizer_idx == 0:
             supervised_loss = self.binary_crossentropy_Dice(self(images), true_obj)
+            self.log("train/supervised_loss", supervised_loss, on_epoch=True, on_step=True)
             fake_image = self(images)
             fake_image_binary = (fake_image > 0.5).float()
             g_loss = self.adversarial_loss(self.discriminator(fake_image_binary), valid)
-            print("supervised loss:", supervised_loss.item(), "gan loss:", g_loss.item())
+            self.log("train/adverserial_loss", g_loss, on_epoch=True, on_step=True)
             loss = (10 * supervised_loss + g_loss) / 11
-            loss += self.topological_step(self(images), true_obj)
+
+            topo_loss = self.topological_step(self(images), true_obj)
+            self.log('train/topo_loss', topo_loss)
+
+            loss += topo_loss
+            self.log("train/combined_loss", loss, on_epoch=True, on_step=True)
             tqdm_dict = {'g_loss': loss}
             output = OrderedDict({
                 'loss': loss,
@@ -571,8 +558,8 @@ class LightningSHAPR_GANoptimization(pl.LightningModule):
 
             # test discriminator on fake images
             loss = (real_loss + fake_loss) / 2
+            self.log("train/discriminator_loss", loss, on_epoch=True, on_step=True)
             tqdm_dict = {'d_loss': loss}
-            print("discriminator loss:", loss.item())
             output = OrderedDict({
                 'loss': loss,
                 'progress_bar': tqdm_dict,
@@ -585,8 +572,8 @@ class LightningSHAPR_GANoptimization(pl.LightningModule):
         pred = self(images)
         loss = self.binary_crossentropy_Dice(pred, true_obj)
         loss += self.topological_step(pred, true_obj)
-        #wandb.log({"train/val_loss": loss})
-        self.log("val_loss", loss)
+
+        self.log("val/combined_loss", loss, on_epoch=True)
 
     def test_step(self, test_batch, batch_idx):
         images, true_obj = test_batch
@@ -606,6 +593,6 @@ class LightningSHAPR_GANoptimization(pl.LightningModule):
         opt_d = torch.optim.Adam(self.discriminator.parameters(), lr=0.0000005)  # 00.00005)
         scheduler_s = torch.optim.lr_scheduler.ReduceLROnPlateau(opt_s, patience=2)
         scheduler_d = torch.optim.lr_scheduler.StepLR(opt_d, step_size=5, gamma=0.5)
-        lr_schedulers_s = {"scheduler": scheduler_s, "monitor": "val_loss"}
-        lr_schedulers_d = {"scheduler": scheduler_d, "monitor": "val_loss"}
+        lr_schedulers_s = {"scheduler": scheduler_s, "monitor": "val/combined_loss"}
+        lr_schedulers_d = {"scheduler": scheduler_d, "monitor": "val/combined_loss"}
         return [opt_s, opt_d], [lr_schedulers_s, lr_schedulers_d]
