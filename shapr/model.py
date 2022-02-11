@@ -351,17 +351,9 @@ class LightningSHAPRoptimization(pl.LightningModule):
         images, true_obj = val_batch
         pred = self(images)
         loss = self.binary_crossentropy_Dice(pred, true_obj)
-
         self.log("val/supervised_loss", loss, on_epoch=True, on_step=True)
-
         topo_loss = self.topological_step(pred, true_obj)
-
-        self.log(
-            "val/topo_loss",
-            topo_loss,
-            on_epoch=True,
-        )
-
+        self.log("val/topo_loss",topo_loss,on_epoch=True)
         loss += topo_loss
         self.log("val/combined_loss", loss, on_epoch=True)
 
@@ -571,8 +563,10 @@ class LightningSHAPR_GANoptimization(pl.LightningModule):
         images, true_obj = val_batch
         pred = self(images)
         loss = self.binary_crossentropy_Dice(pred, true_obj)
-        loss += self.topological_step(pred, true_obj)
-
+        self.log("val/supervised_loss", loss, on_epoch=True, on_step=True)
+        topo_loss = self.topological_step(pred, true_obj)
+        self.log("val/topo_loss",topo_loss,on_epoch=True)
+        loss += topo_loss
         self.log("val/combined_loss", loss, on_epoch=True)
 
     def test_step(self, test_batch, batch_idx):
