@@ -388,9 +388,9 @@ class LightningSHAPRoptimization(pl.LightningModule):
     def test_step(self, test_batch, batch_idx):
         images, true_obj = test_batch
         pred = self(images)
-        self.log("test_dice_errror", self.dice(pred, true_obj))
-        self.log("test_volume_errror", self.volume_error(pred, true_obj))
-        self.log("test_IoU_errror", self.iou_error(pred, true_obj))
+        self.log("test/dice_errror", self.dice(pred, true_obj))
+        self.log("test/volume_errror", self.volume_error(pred, true_obj))
+        self.log("test/IoU_errror", self.iou_error(pred, true_obj))
 
 
 # Define GAN
@@ -577,9 +577,9 @@ class LightningSHAPR_GANoptimization(pl.LightningModule):
     def test_step(self, test_batch, batch_idx):
         images, true_obj = test_batch
         pred = self(images)
-        self.log("test_dice_errror", self.dice(pred, true_obj))
-        self.log("test_volume_errror", self.volume_error(pred, true_obj))
-        self.log("test_IoU_errror", self.iou_error(pred, true_obj))
+        self.log("test/dice_errror", self.dice(pred, true_obj))
+        self.log("test/volume_errror", self.volume_error(pred, true_obj))
+        self.log("test/IoU_errror", self.iou_error(pred, true_obj))
 
     def configure_optimizers(self):
         lr_1 = 0.001
