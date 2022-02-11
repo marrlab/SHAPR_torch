@@ -98,14 +98,14 @@ def run_train(amp: bool = False, params=None, overrides=None):
         cv_train_filenames, cv_val_filenames = train_test_split(cv_train_filenames, test_size=0.2)
 
         checkpoint_callback = ModelCheckpoint(
-            monitor="val/loss",
+            monitor="val/combined_loss",
             dirpath=os.path.join(settings.path, "logs"),
             filename="SHAPR_training-{epoch:02d}-{val_loss:.2f}",
             save_top_k=3,
             mode="min",
         )
         early_stopping_callback = EarlyStopping(
-            monitor='val/loss', patience=20
+            monitor='val/combined_loss', patience=20
         )
         tb_logger = TensorBoardLogger("logs/")
 
@@ -133,7 +133,7 @@ def run_train(amp: bool = False, params=None, overrides=None):
         """
         early_stopping_callback = EarlyStopping(monitor='val_loss', patience=30)
         checkpoint_callback = ModelCheckpoint(
-            monitor="val/loss",
+            monitor="val/combined_loss",
             dirpath=os.path.join(settings.path, "logs"),
             verbose=True,
             filename="SHAPR_GAN_training-{epoch:02d}-{val_loss:.2f}",

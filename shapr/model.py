@@ -266,7 +266,7 @@ class LightningSHAPRoptimization(pl.LightningModule):
         return {
             'optimizer': opt,
             'lr_scheduler': scheduler,
-            'monitor': 'val/loss'
+            'monitor': 'val/combined_loss'
         }
 
     def MSEloss(self, y_true, y_pred):
@@ -327,6 +327,8 @@ class LightningSHAPRoptimization(pl.LightningModule):
         pred = self(images)
         loss = self.binary_crossentropy_Dice(pred, true_obj)
 
+        self.log("train/supervised_loss", loss, on_epoch=True, on_step=True)
+
         topo_loss = self.topological_step(pred, true_obj)
 
         self.log(
@@ -337,13 +339,15 @@ class LightningSHAPRoptimization(pl.LightningModule):
         )
 
         loss += topo_loss
-        self.log("train/loss", loss, on_epoch=True, on_step=True)
+        self.log("train/combined_loss", loss, on_epoch=True, on_step=True)
         return loss
 
     def validation_step(self, val_batch, batch_idx):
         images, true_obj = val_batch
         pred = self(images)
         loss = self.binary_crossentropy_Dice(pred, true_obj)
+
+        self.log("val/supervised_loss", loss, on_epoch=True, on_step=True)
 
         topo_loss = self.topological_step(pred, true_obj)
 
@@ -354,7 +358,7 @@ class LightningSHAPRoptimization(pl.LightningModule):
         )
 
         loss += topo_loss 
-        self.log("val/loss", loss, on_epoch=True)
+        self.log("val/combined_loss", loss, on_epoch=True)
 
     def train_dataloader(self):
         dataset = SHAPRDataset(self.path, self.cv_train_filenames, self.random_seed)
@@ -549,7 +553,7 @@ class LightningSHAPR_GANoptimization(pl.LightningModule):
         loss = self.binary_crossentropy_Dice(pred, true_obj)
         loss += self.topological_step(pred, true_obj)
 
-        self.log("val/loss", loss, on_epoch=True)
+        self.log("val/combined_loss", loss, on_epoch=True)
 
     def configure_optimizers(self):
         lr_1 = 0.001
@@ -562,6 +566,6 @@ class LightningSHAPR_GANoptimization(pl.LightningModule):
         opt_d = torch.optim.Adam(self.discriminator.parameters(), lr=0.000005)  # 00.00005)
         scheduler_s = torch.optim.lr_scheduler.ReduceLROnPlateau(opt_s, patience=2)
         scheduler_d = torch.optim.lr_scheduler.StepLR(opt_d, step_size=5, gamma=0.5)
-        lr_schedulers_s = {"scheduler": scheduler_s, "monitor": "val/loss"}
-        lr_schedulers_d = {"scheduler": scheduler_d, "monitor": "val/loss"}
+        lr_schedulers_s = {"scheduler": scheduler_s, "monitor": "val/combined_loss"}
+        lr_schedulers_d = {"scheduler": scheduler_d, "monitor": "val/combined_loss"}
         return [opt_s, opt_d], [lr_schedulers_s, lr_schedulers_d]
