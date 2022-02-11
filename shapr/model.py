@@ -526,10 +526,11 @@ class LightningSHAPR_GANoptimization(pl.LightningModule):
 
         if optimizer_idx == 0:
             supervised_loss = self.binary_crossentropy_Dice(self(images), true_obj)
+            self.log("train/supervised_loss", supervised_loss, on_epoch=True, on_step=True)
             fake_image = self(images)
             fake_image_binary = (fake_image > 0.5).float()
             g_loss = self.adversarial_loss(self.discriminator(fake_image_binary), valid)
-            print("supervised loss:", supervised_loss.item(), "gan loss:", g_loss.item())
+            self.log("train/adverserial_loss", g_loss, on_epoch=True, on_step=True)
             loss = (10 * supervised_loss + g_loss) / 11
 
             topo_loss = self.topological_step(self(images), true_obj)
@@ -537,6 +538,7 @@ class LightningSHAPR_GANoptimization(pl.LightningModule):
 
             loss += topo_loss
 
+            self.log("train/combined_loss", loss, on_epoch=True, on_step=True)
             tqdm_dict = {'g_loss': loss}
             output = OrderedDict({
                 'loss': loss,
@@ -557,8 +559,8 @@ class LightningSHAPR_GANoptimization(pl.LightningModule):
 
             # test discriminator on fake images
             loss = (real_loss + fake_loss) / 2
+            self.log("train/discriminator_loss", loss, on_epoch=True, on_step=True)
             tqdm_dict = {'d_loss': loss}
-            print("discriminator loss:", loss.item())
             output = OrderedDict({
                 'loss': loss,
                 'progress_bar': tqdm_dict,
@@ -570,8 +572,10 @@ class LightningSHAPR_GANoptimization(pl.LightningModule):
         images, true_obj = val_batch
         pred = self(images)
         loss = self.binary_crossentropy_Dice(pred, true_obj)
-        loss += self.topological_step(pred, true_obj)
-
+        self.log("val/supervised_loss", loss, on_epoch=True, on_step=True)
+        topo_loss = self.topological_step(pred, true_obj)
+        self.log("val/topo_loss",topo_loss,on_epoch=True)
+        loss += topo_loss
         self.log("val/combined_loss", loss, on_epoch=True)
 
     def test_step(self, test_batch, batch_idx):

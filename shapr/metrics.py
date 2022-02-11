@@ -45,4 +45,4 @@ class IoU_error(torch.nn.Module):
         intersection = torch.count_nonzero(intersection > 1.5)
         union = y_pred_binary + y_true_binary
         union = torch.count_nonzero(union > 0.5)
-        return intersection / union
+        return 1 - intersection / union

@@ -12,7 +12,6 @@ from sklearn.model_selection import train_test_split
 import pytorch_lightning as pl
 
 from pytorch_lightning.callbacks import ModelCheckpoint, EarlyStopping
-from pytorch_lightning.loggers import TensorBoardLogger 
 from pytorch_lightning.loggers import WandbLogger
 
 import numpy as np
@@ -105,9 +104,8 @@ def run_train(amp: bool = False, params=None, overrides=None):
             mode="min",
         )
         early_stopping_callback = EarlyStopping(
-            monitor='val/combined_loss', patience=20
+            monitor='val/combined_loss', patience=15
         )
-        tb_logger = TensorBoardLogger("logs/")
 
         SHAPRmodel = LightningSHAPRoptimization(
             settings,
@@ -120,7 +118,7 @@ def run_train(amp: bool = False, params=None, overrides=None):
             max_epochs=settings.epochs_SHAPR,
             callbacks=[checkpoint_callback,
             early_stopping_callback],
-            logger=[tb_logger, wandb_logger],
+            logger=[wandb_logger],
             log_every_n_steps=5,
             gpus=gpus
         )
@@ -137,7 +135,7 @@ def run_train(amp: bool = False, params=None, overrides=None):
         """
         After training SHAPR for the set number of epochs, we train the adverserial model
         """
-        early_stopping_callback = EarlyStopping(monitor='val_loss', patience=30)
+        early_stopping_callback = EarlyStopping(monitor='val/combined_loss', patience=15)
         checkpoint_callback = ModelCheckpoint(
             monitor="val/combined_loss",
             dirpath=os.path.join(settings.path, "logs"),
@@ -151,7 +149,7 @@ def run_train(amp: bool = False, params=None, overrides=None):
         SHAPR_GAN_trainer = pl.Trainer(
             callbacks=[early_stopping_callback, checkpoint_callback],
             max_epochs=settings.epochs_cSHAPR,
-            logger=[tb_logger, wandb_logger],
+            logger=[wandb_logger],
             gpus=gpus
         )
         SHAPR_GAN_trainer.fit(model=SHAPR_GANmodel)
@@ -180,10 +178,7 @@ def run_train(amp: bool = False, params=None, overrides=None):
                     SHAPRmodel.eval()
                     for test_file in cv_test_filenames:
                         image, gt = get_test_image(settings, test_file)
-
                         image = torch.from_numpy(image)
-                        gt = torch.from_numpy(gt)
-
                         img = image.float()
                         output = SHAPRmodel(img)
                         output = output.squeeze()
