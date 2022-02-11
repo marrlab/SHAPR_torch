@@ -9,7 +9,7 @@ parameters:
   result_path:
     value: ""
   epochs_SHAPR:
-    value: 30
+    value: 100
   epochs_cSHAPR:
     value: 0
   topo_interp:
@@ -17,6 +17,6 @@ parameters:
   topo_feat_d:
     values: [0, 1, 2]
   topo_lambda:
-    values: [0.1, 1.0, 10.0]
+    values: [0.1, 1.0]
   
 program: sweep.py
