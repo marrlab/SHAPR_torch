@@ -73,10 +73,11 @@ class SHAPRDataset(Dataset):
 def get_test_image(self, filename):
     img = import_image(os.path.join(self.path, "mask", filename)) / 255.
     bf = import_image(os.path.join(self.path, "image", filename)) / 255.
+    obj = import_image(os.path.join(self.path, "obj", filename)) / 255.
     mask_bf = np.zeros((2, 1, int(np.shape(img)[0]), int(np.shape(img)[1])))
     mask_bf[0, 0, :, :] = img
     mask_bf[1, 0, :, :] = bf * img
     mask_bf = mask_bf[np.newaxis,...]
-    return mask_bf
+    return mask_bf, obj
 
 

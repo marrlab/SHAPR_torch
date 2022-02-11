@@ -1,4 +1,4 @@
-"""Run training with optional external parameters."""
+"""Run training with optional external parameters file."""
 
 import argparse
 

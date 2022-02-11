@@ -1,21 +1,25 @@
-from shapr.utils import *
 from shapr._settings import SHAPRConfig
-from shapr.data_generator import *
-#from shapr.model import netSHAPR, netDiscriminator
-import torch.optim as optim
-from tqdm import tqdm
-from torch.utils.data import DataLoader, random_split
-from pathlib import Path
-import wandb
-import logging
-import pytorch_lightning as pl
-from model import SHAPR, LightningSHAPRoptimization, LightningSHAPR_GANoptimization
-from data_generator import SHAPRDataset
+from shapr.data_generator import get_test_image
+from shapr.metrics import Dice_loss, IoU_error, Volume_error
+
+from model import LightningSHAPRoptimization, LightningSHAPR_GANoptimization
+
+from skimage.io import imsave
+
+from sklearn.model_selection import KFold
 from sklearn.model_selection import train_test_split
+
+import pytorch_lightning as pl
+
 from pytorch_lightning.callbacks import ModelCheckpoint, EarlyStopping
-import glob
-from pytorch_lightning import loggers as pl_loggers
+from pytorch_lightning.loggers import TensorBoardLogger 
+from pytorch_lightning.loggers import WandbLogger
+
+import numpy as np
+
+import os
 import torch
+import wandb
 
 PARAMS = {"num_filters": 10,
       "dropout": 0.
@@ -31,9 +35,14 @@ The filenames of corresponding files in the obj, mask and image ordner are expet
 """
 
 
-def run_train(amp: bool = False, params=None):
+def run_train(amp: bool = False, params=None, overrides=None):
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     settings = SHAPRConfig(params=params)
+
+    if overrides is not None:
+        # Handle overrides by user
+        for k, v in overrides.items():
+            settings.__setattr__(k, v)
 
     # Handle GPU vs CPU selection
     if device == torch.device("cpu"):
@@ -53,7 +62,33 @@ def run_train(amp: bool = False, params=None):
     kf = KFold(n_splits=5)
     os.makedirs(os.path.join(settings.path, "logs"), exist_ok=True)
 
+    items = [
+        (k, v) for k, v in settings.__dict__.items()
+            if not k.startswith('_')
+    ]
+
+    # Prepare configuration for `wandb` client. Additional values can be
+    # added on a per-fold basis.
+    config = {
+        k: v for k, v in items
+    }
+
+    group = wandb.util.generate_id()
+
     for fold, (cv_train_indices, cv_test_indices) in enumerate(kf.split(filenames)):
+        config['fold'] = fold
+
+        wandb_logger = WandbLogger()
+
+        run = wandb.init(
+            project="SHAPR_topological",
+            entity="shapr_topological",
+            job_type="train",
+            group=group,
+            config=config,
+            reinit=True,
+        )
+
         cv_train_filenames = [str(filenames[i]) for i in cv_train_indices]
         cv_test_filenames = [str(filenames[i]) for i in cv_test_indices]
 
@@ -63,19 +98,30 @@ def run_train(amp: bool = False, params=None):
         cv_train_filenames, cv_val_filenames = train_test_split(cv_train_filenames, test_size=0.2)
 
         checkpoint_callback = ModelCheckpoint(
-            monitor="val_loss",
+            monitor="val/combined_loss",
             dirpath=os.path.join(settings.path, "logs"),
             filename="SHAPR_training-{epoch:02d}-{val_loss:.2f}",
             save_top_k=3,
             mode="min",
         )
-        early_stopping_callback = EarlyStopping(monitor='val_loss', patience=5)
-        tb_logger = pl_loggers.TensorBoardLogger("logs/")
-        SHAPRmodel = LightningSHAPRoptimization(settings, cv_train_filenames, cv_val_filenames)
+        early_stopping_callback = EarlyStopping(
+            monitor='val/combined_loss', patience=20
+        )
+        tb_logger = TensorBoardLogger("logs/")
+
+        SHAPRmodel = LightningSHAPRoptimization(
+            settings,
+            cv_train_filenames,
+            cv_val_filenames,
+            cv_test_filenames
+        )
+
         SHAPR_trainer = pl.Trainer(
             max_epochs=settings.epochs_SHAPR,
             callbacks=[checkpoint_callback,
-            early_stopping_callback], logger=tb_logger,
+            early_stopping_callback],
+            logger=[tb_logger, wandb_logger],
+            log_every_n_steps=5,
             gpus=gpus
         )
         SHAPR_trainer.fit(model= SHAPRmodel)
@@ -83,12 +129,17 @@ def run_train(amp: bool = False, params=None):
             'state_dict': SHAPRmodel.state_dict(),
         }, os.path.join(settings.path, "logs/")+"SHAPR_training.ckpt")
 
+        if settings.epochs_SHAPR > 0:
+            SHAPR_best_model_path = checkpoint_callback.best_model_path
+        else:
+            SHAPR_best_model_path = None
+
         """
         After training SHAPR for the set number of epochs, we train the adverserial model
         """
-        early_stopping_callback = EarlyStopping(monitor='val_loss', patience=5)
+        early_stopping_callback = EarlyStopping(monitor='val_loss', patience=30)
         checkpoint_callback = ModelCheckpoint(
-            monitor="val_loss",
+            monitor="val/combined_loss",
             dirpath=os.path.join(settings.path, "logs"),
             verbose=True,
             filename="SHAPR_GAN_training-{epoch:02d}-{val_loss:.2f}",
@@ -96,11 +147,11 @@ def run_train(amp: bool = False, params=None):
             mode="min",
         )
 
-        SHAPR_GANmodel = LightningSHAPR_GANoptimization(settings, cv_train_filenames, cv_val_filenames)
-
+        SHAPR_GANmodel = LightningSHAPR_GANoptimization(settings, cv_train_filenames, cv_val_filenames, cv_test_filenames, SHAPR_best_model_path)
         SHAPR_GAN_trainer = pl.Trainer(
             callbacks=[early_stopping_callback, checkpoint_callback],
-            max_epochs=settings.epochs_cSHAPR,logger=tb_logger,
+            max_epochs=settings.epochs_cSHAPR,
+            logger=[tb_logger, wandb_logger],
             gpus=gpus
         )
         SHAPR_GAN_trainer.fit(model=SHAPR_GANmodel)
@@ -109,30 +160,44 @@ def run_train(amp: bool = False, params=None):
         The 3D shape of the test data for each fold will be predicted here
         """
         if settings.epochs_cSHAPR > 0:
-            with torch.no_grad():
-                SHAPR_GANmodel.eval()
-                for test_file in cv_test_filenames:
-                    image = torch.from_numpy(get_test_image(settings, test_file))
-                    img = image.float()
-                    output = SHAPR_GANmodel(img)
-                    os.makedirs(settings.result_path, exist_ok=True)
-                    prediction = output.cpu().detach().numpy()
-                    imsave(os.path.join(settings.result_path, test_file), (255 * prediction).astype("uint8"))
+            SHAPR_GAN_trainer.test(model=SHAPR_GANmodel)
 
+            if len(settings.result_path) > 0:
+                with torch.no_grad():
+                    SHAPR_GANmodel.eval()
+                    for test_file in cv_test_filenames:
+                        image, gt = torch.from_numpy(get_test_image(settings, test_file))
+                        img = image.float()
+                        output = SHAPR_GANmodel(img)
+                        os.makedirs(settings.result_path, exist_ok=True)
+                        prediction = output.cpu().detach().numpy()
+                        imsave(os.path.join(settings.result_path, test_file), (255 * prediction).astype("uint8"))
         else:
-            with torch.no_grad():
-                SHAPRmodel.eval()
-                for test_file in cv_test_filenames:
-                    image = torch.from_numpy(get_test_image(settings, test_file))
-                    img = image.float()
-                    output = SHAPRmodel(img)
-                    os.makedirs(settings.result_path, exist_ok=True)
-                    prediction = output.cpu().detach().numpy()
-                    imsave(os.path.join(settings.result_path, test_file), (255 * prediction).astype("uint8"))
+            SHAPR_trainer.test(model= SHAPRmodel)
+
+            if len(settings.result_path) > 0:
+                with torch.no_grad():
+                    SHAPRmodel.eval()
+                    for test_file in cv_test_filenames:
+                        image, gt = get_test_image(settings, test_file)
+
+                        image = torch.from_numpy(image)
+                        gt = torch.from_numpy(gt)
+
+                        img = image.float()
+                        output = SHAPRmodel(img)
+                        output = output.squeeze()
+                        os.makedirs(settings.result_path, exist_ok=True)
+                        prediction = output.cpu().detach().numpy()
+                        imsave(os.path.join(settings.result_path, test_file), (255 * prediction).astype("uint8"))
+
+        # Finish current `wandb` run; this enables grouping later on.
+        run.finish()
 
 
 def run_evaluation():
 
+    settings = SHAPRConfig()
     print(settings)
 
     #TODO
@@ -170,5 +235,3 @@ def run_evaluation():
         imsave(settings.result_path + test_filename, result.astype("uint8"))
         i = i+1        
     '''
-
-

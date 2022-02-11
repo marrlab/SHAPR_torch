@@ -98,6 +98,13 @@ if __name__ == '__main__':
     parser.add_argument('SOURCE', type=str, help='Source directory')
     parser.add_argument('TARGET', type=str, nargs='+', help='Target directory')
 
+    parser.add_argument(
+        '-q', '--quick',
+        action='store_true',
+        help='If set, only calculates statistics that can be obtained '
+             'efficiently.'
+    )
+
     args = parser.parse_args()
 
     iou_inv = collections.defaultdict(list)
@@ -106,6 +113,7 @@ if __name__ == '__main__':
     roughness = collections.defaultdict(list)
 
     filenames = sorted(os.listdir(args.SOURCE))
+    processed = []
 
     for filename in tqdm(filenames, desc='File'):
         source = imread(os.path.join(args.SOURCE, filename)) / 255.0
@@ -123,6 +131,8 @@ if __name__ == '__main__':
 
         if skip:
             continue
+        else:
+            processed.append(os.path.basename(filename))
 
         for target_ in args.TARGET:
             target_path = os.path.join(target_, filename)
@@ -136,12 +146,12 @@ if __name__ == '__main__':
 
             name = os.path.basename(target_)
 
-            if np.mean(source) > 0.1:
-                iou_inv[name].append(1 - IoU(source, target))
-                volume[name].append(
-                    np.abs(np.sum(target) - np.sum(source)) / np.sum(source)
-                )
+            iou_inv[name].append(1 - IoU(source, target))
+            volume[name].append(
+                np.abs(np.sum(target) - np.sum(source)) / np.sum(source)
+            )
 
+            if not args.quick:
                 source_surface = get_surface(source)
                 surface[name].append(
                     np.abs(get_surface(target) - source_surface)
@@ -154,12 +164,41 @@ if __name__ == '__main__':
                     / source_roughness
                 )
 
-    fig, axes = plt.subplots(nrows=4, squeeze=True, figsize=(5, 6))
+    # Since we rank data sets based on this quantity, it makes sense to
+    # calculate a fixed data frame here.
+    df_iou = pd.DataFrame.from_dict(iou_inv)
+    df_iou['filename'] = processed
 
-    swarmplot(pd.DataFrame.from_dict(iou_inv), '1 - IoU', axes[0])
+    for col in df_iou.select_dtypes('number').columns:
+        print(df_iou[[col, 'filename']].sort_values(by=col)[:5])
+
+    fig, axes = plt.subplots(
+        nrows=4 - 2 * args.quick,
+        squeeze=True,
+        figsize=(5, 6)
+    )
+
+    swarmplot(df_iou, '1 - IoU', axes[0])
     swarmplot(pd.DataFrame.from_dict(volume), 'Volume error', axes[1])
-    swarmplot(pd.DataFrame.from_dict(surface), 'Surface error', axes[2])
-    swarmplot(pd.DataFrame.from_dict(roughness), 'Roughness error', axes[3])
+
+    filenames = list(map(os.path.basename, filenames))
+
+    if len(filenames) > len(processed):
+        skipped = sorted(set(filenames) - set(processed))
+        print(f'Skipped some files: {skipped}')
+
+    if not args.quick:
+        swarmplot(
+            pd.DataFrame.from_dict(surface),
+            'Surface error',
+            axes[2]
+        )
+
+        swarmplot(
+            pd.DataFrame.from_dict(roughness),
+            'Roughness error',
+            axes[3]
+        )
 
     plt.tight_layout()
     plt.show()
