@@ -1,10 +1,10 @@
 {
-    "path": "/media/dominik/LaCie/SHAPR_pytorch/Organoid_small/",
+    "path": "/home/dominik/Documents/SHAPR_pytorch/docs/sample/",
     "result_path": "",
     "random_seed" : 0,
     "batch_size": 10,
-    "epochs_SHAPR": 20,
-    "epochs_cSHAPR": 20,
+    "epochs_SHAPR": 100,
+    "epochs_cSHAPR": 100,
     "topo_lambda": 0.1,
     "topo_interp": 16,
     "topo_feat_d": 1
