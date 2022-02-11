@@ -104,7 +104,7 @@ def run_train(amp: bool = False, params=None, overrides=None):
             mode="min",
         )
         early_stopping_callback = EarlyStopping(
-            monitor='val/combined_loss', patience=20
+            monitor='val/combined_loss', patience=15
         )
 
         SHAPRmodel = LightningSHAPRoptimization(
@@ -135,7 +135,7 @@ def run_train(amp: bool = False, params=None, overrides=None):
         """
         After training SHAPR for the set number of epochs, we train the adverserial model
         """
-        early_stopping_callback = EarlyStopping(monitor='val_loss', patience=30)
+        early_stopping_callback = EarlyStopping(monitor='val_loss', patience=15)
         checkpoint_callback = ModelCheckpoint(
             monitor="val/combined_loss",
             dirpath=os.path.join(settings.path, "logs"),
