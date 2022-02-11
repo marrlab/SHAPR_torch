@@ -1,7 +1,7 @@
 method: grid
 
-entity: brieck
-project: SHAPR
+entity: shapr_topological
+project: SHAPR_topological
 
 parameters:
   path:
