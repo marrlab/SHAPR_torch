@@ -18,5 +18,7 @@ parameters:
     values: [0, 1, 2]
   topo_lambda:
     values: [0.1, 1.0]
+  fold:
+    values: [0, 1, 2, 3, 4]
   
 program: sweep.py
