@@ -37,4 +37,4 @@ if __name__ == '__main__':
         if k in shapr_args and v is not None:
             overrides[k] = v
 
-    run_train(overrides=overrides)
+    run_train(overrides=overrides, args=args)
