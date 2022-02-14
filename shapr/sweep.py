@@ -21,6 +21,12 @@ if __name__ == '__main__':
 
         shapr_args.add(k)
 
+    parser.add_argument(
+        '--fold',
+        type=int,
+        help='Specifies input fold to use'
+    )
+
     args = parser.parse_args()
 
     # Prepare arguments that were overridden by the user from the
@@ -31,4 +37,4 @@ if __name__ == '__main__':
         if k in shapr_args and v is not None:
             overrides[k] = v
 
-    run_train(overrides=overrides)
+    run_train(overrides=overrides, args=args)

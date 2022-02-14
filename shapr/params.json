@@ -1,6 +1,6 @@
 {
-    "path": "/media/dominik/LaCie/SHAPR_pytorch/Organoid_small/",
-    "result_path": "/media/dominik/LaCie/SHAPR_pytorch/Organoid_small/results_pytorch_topo_adverserial_Disc_learning_rate/",
+    "path": "/home/dominik/Documents/SHAPR_pytorch/docs/sample/",
+    "result_path": "",
     "random_seed" : 0,
     "batch_size": 10,
     "epochs_SHAPR": 100,

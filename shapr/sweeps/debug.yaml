@@ -9,16 +9,16 @@ parameters:
   result_path:
     value: ""
   epochs_SHAPR:
-    value: 100
+    value: 2
   epochs_cSHAPR:
     value: 0
   topo_interp:
-    values: [8, 16, 24]
+    value: 8
   topo_feat_d:
-    values: [0, 1, 2]
+    values: [0, 1]
   topo_lambda:
-    values: [0.1, 1.0]
+    value: 0.1
   fold:
-    values: [0, 1, 2, 3, 4]
+    values: [0, 1]
   
 program: sweep.py
