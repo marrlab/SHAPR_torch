@@ -11,14 +11,14 @@ parameters:
   epochs_SHAPR:
     value: 100
   epochs_cSHAPR:
-    value: 0
+    values: [0, 100]
   topo_interp:
-    values: [8, 16, 24]
+    values: [8, 16]
   topo_feat_d:
     values: [0, 1, 2]
   topo_lambda:
-    values: [0.1, 1.0]
+    values: [0.1, 0.5]
   fold:
-    values: [0, 1, 2, 3, 4]
+    values: [0, 1]
   
 program: sweep.py
