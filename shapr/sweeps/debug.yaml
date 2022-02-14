@@ -1,0 +1,24 @@
+method: grid
+
+entity: shapr_topological
+project: SHAPR_topological
+
+parameters:
+  path:
+    value: "../docs/sample/"
+  result_path:
+    value: ""
+  epochs_SHAPR:
+    value: 2
+  epochs_cSHAPR:
+    value: 0
+  topo_interp:
+    value: 8
+  topo_feat_d:
+    values: [0, 1]
+  topo_lambda:
+    value: 0.1
+  fold:
+    values: [0, 1]
+  
+program: sweep.py
