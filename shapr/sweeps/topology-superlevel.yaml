@@ -19,7 +19,7 @@ parameters:
   topo_feat_s:
     value: True
   topo_lambda:
-    value: [0.1, 0.5]
+    values: [0.1, 0.5]
   fold:
     values: [0, 1]
   
