@@ -250,9 +250,11 @@ class LightningSHAPRoptimization(pl.LightningModule):
         # Required for topological feature calculation. We want cubical
         # complexes because they handle images intrinsically.
         #
-        #  TODO: Consider superlevel set filtrations?
         #  TODO: Consider different weighting schemes for Wasserstein?
-        self.cubical_complex = CubicalComplex(dim=3)
+        self.cubical_complex = CubicalComplex(
+            dim=3,
+            superlevel=settings.topo_feat_s
+        )
         self.topo_loss = WassersteinDistance(q=2)
         self.topo_lambda = settings.topo_lambda
         self.topo_interp = settings.topo_interp
