@@ -26,7 +26,18 @@ def show_best_performance(df):
         metric: [np.mean, np.std] for metric in metric_columns
     }
 
-    print(df.groupby(topo_params).agg(agg))
+    df_grouped = df.groupby(topo_params).agg(agg)
+    print(df_grouped)
+
+    means = [
+        (c, h) for (c, h) in df_grouped.columns if h == 'mean'
+    ]
+
+    n_levels = len(df_grouped.index.names)
+
+    print('Minima are achieved by the following groups:\n')
+    for level in range(n_levels):
+        print(df_grouped[means].groupby(level=level).idxmin())
 
 
 if __name__ == '__main__':
