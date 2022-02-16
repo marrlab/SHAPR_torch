@@ -39,6 +39,17 @@ def show_best_performance(df):
     for level in range(n_levels):
         print(df_grouped[means].groupby(level=level).idxmin())
 
+    # Aggregate over all scenarios and find the best compromise
+    # solution.
+    print('\nMean performance over all scores:\n')
+    print(df_grouped[means].mean(axis=1))
+
+    print(
+        '\nOverall minimum performance:', 
+        df_grouped[means].mean(axis=1).idxmin(axis=0)
+    )
+
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
