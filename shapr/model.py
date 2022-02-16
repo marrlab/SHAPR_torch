@@ -46,7 +46,8 @@ def topological_step(instance, pred_obj, true_obj):
 
     This function does the 'heavy lifting' when it comes to the use of
     topological features. Given a set of predicted objects and true
-    objects, it calculates the appropriate topological loss."""
+    objects, it calculates the appropriate topological loss.
+    """
     # Check whether there's anything to do here. This makes it
     # possible to disable the calculation of topological features
     # altogether.
