@@ -49,6 +49,16 @@ def show_best_performance(df):
         df_grouped[means].mean(axis=1).idxmin(axis=0)
     )
 
+    print('\nRestricting to scenarios with small regularisation strength:\n')
+
+    # Filter scenario that we converged on.
+    df = df.query('topo_lambda == 0.1 and topo_interp < 24')
+
+    topo_params.remove('topo_lambda')
+    df = df.drop('topo_lambda', axis='columns')
+
+    df_grouped = df.groupby(topo_params).agg(agg)
+    print(df_grouped)
 
 
 if __name__ == '__main__':
