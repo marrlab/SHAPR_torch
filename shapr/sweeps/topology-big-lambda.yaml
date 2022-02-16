@@ -17,7 +17,7 @@ parameters:
   topo_feat_d:
     values: [0, 1, 2]
   topo_lambda:
-    value: [10.0, 100.0]
+    values: [10.0, 100.0]
   fold:
     values: [0, 1, 2, 3, 4]
   
