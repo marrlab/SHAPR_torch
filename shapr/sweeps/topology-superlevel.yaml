@@ -19,8 +19,8 @@ parameters:
   topo_feat_s:
     value: True
   topo_lambda:
-    values: [0.1, 0.5]
+    value: 0.1
   fold:
-    values: [0, 1]
+    values: [0, 1, 2, 3, 4]
   
 program: sweep.py
