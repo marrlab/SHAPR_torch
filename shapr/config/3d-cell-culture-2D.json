@@ -1,0 +1,11 @@
+{
+    "path": "../data/3D cell culture",
+    "result_path": "",
+    "random_seed" : 0,
+    "batch_size": 6,
+    "epochs_SHAPR": 100,
+    "epochs_cSHAPR": 0,
+    "topo_lambda": 0.1,
+    "topo_interp": 16,
+    "topo_feat_d": 2
+}
