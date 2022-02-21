@@ -269,9 +269,11 @@ def run_fold(
             with torch.no_grad():
                 SHAPR_GANmodel.eval()
                 for test_file in cv_test_filenames:
-                    image, gt = torch.from_numpy(get_test_image(settings, test_file))
+                    image, gt = get_test_image(settings, test_file)
+                    image = torch.from_numpy(image)
                     img = image.float()
-                    output = SHAPR_GANmodel(img)
+                    output = SHAPRmodel(img)
+                    output = output.squeeze()
                     os.makedirs(settings.result_path, exist_ok=True)
                     prediction = output.cpu().detach().numpy()
                     imsave(os.path.join(settings.result_path, test_file), (255 * prediction).astype("uint8"))

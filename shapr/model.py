@@ -334,7 +334,7 @@ class LightningSHAPRoptimization(pl.LightningModule):
         lr = 0.01
         b1 = 0.5
         b2 = 0.999
-        opt = torch.optim.Adam(self.shapr.parameters(), lr=lr)
+        opt = torch.optim.Adam(self.shapr.parameters())
         scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(opt, patience=2)
         # return opt, scheduler
         return {
@@ -354,7 +354,7 @@ class LightningSHAPRoptimization(pl.LightningModule):
         y_true = torch.squeeze(y_true)
         dice_loss = Dice_loss()
         BCE = nn.BCEWithLogitsLoss()
-        return dice_loss(y_true, y_pred) + BCE(y_true, y_pred)
+        return (2*dice_loss(y_true, y_pred) + BCE(y_true, y_pred))/2
 
     def training_step(self, train_batch, batch_idx):
         images, true_obj = train_batch
@@ -478,7 +478,7 @@ class LightningSHAPR_GANoptimization(pl.LightningModule):
         y_true = torch.squeeze(y_true)
         dice_loss = Dice_loss()
         BCE = nn.BCEWithLogitsLoss()
-        return dice_loss(y_true, y_pred) + BCE(y_true, y_pred)
+        return (2*dice_loss(y_true, y_pred) + BCE(y_true, y_pred))/2
 
     def train_dataloader(self):
         dataset = SHAPRDataset(self.path, self.cv_train_filenames, self.random_seed)

@@ -32,7 +32,7 @@ class Volume_error(torch.nn.Module):
     def forward(self, y_pred, y_true):
         y_pred_binary = (y_pred > 0.5).float()
         y_true_binary = (y_true > 0.5).float()
-        return (torch.count_nonzero(y_pred_binary)-torch.count_nonzero(y_true_binary))/torch.count_nonzero(y_true_binary)
+        return torch.abs(torch.count_nonzero(y_pred_binary)-torch.count_nonzero(y_true_binary))/torch.count_nonzero(y_true_binary)
 
 class IoU_error(torch.nn.Module):
     def __init__(self):
