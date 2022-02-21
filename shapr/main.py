@@ -63,7 +63,7 @@ def run_train(amp: bool = False, params=None, overrides=None, args=None):
 
     items = [
         (k, v) for k, v in settings.__dict__.items()
-            if not k.startswith('_')
+        if not k.startswith('_')
     ]
 
     # Prepare configuration for `wandb` client. Additional values can be
@@ -72,15 +72,12 @@ def run_train(amp: bool = False, params=None, overrides=None, args=None):
         k: v for k, v in items
     }
 
-    # Check whether we are doing a sweep (i.e. `overrides` is specified)
-    # or not.
-    if overrides is not None:
-        group = os.environ['WANDB_SWEEP_ID']
-    else:
-        group = wandb.util.generate_id()
+    # Get the current sweep ID or generate a new one if it does not
+    # exist. That way, everything is grouped correctly via `wandb`.
+    group = os.getenv('WANDB_SWEEP_ID', default=wandb.util.generate_id())
 
     # Get all folds already, making it easier to run them later on since
-    # we are not dealing with a generator expression anymore.
+    # we are not dealing with a generator expression any more.
     folds = [
         (fold, train_index, test_index)
         for fold, (train_index, test_index) in enumerate(kf.split(filenames))
