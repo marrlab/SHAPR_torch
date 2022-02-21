@@ -5,6 +5,7 @@ import os
 import torch
 
 import numpy as np
+import torch.nn as nn
 
 from shapr.utils import import_image
 
@@ -24,6 +25,11 @@ if __name__ == '__main__':
         type=str,
         help='Input file(s)'
     )
+    parser.add_argument(
+        '-s', '--size',
+        type=int,
+        help='Specifies size for interpolation'
+    )
 
     args = parser.parse_args()
 
@@ -36,6 +42,16 @@ if __name__ == '__main__':
     for filename in args.FILE:
         img = import_image(filename) / 255.0
         img = torch.tensor(img.squeeze())
+
+        if args.size is not None:
+            img = img.unsqueeze(dim=0).unsqueeze(dim=0)
+            size = (args.size,) * 3
+            img = nn.functional.interpolate(
+                input=img,
+                size=size,
+
+            ).squeeze()
+
         img = img.unsqueeze(dim=0)
 
         pers_info = cubical_complex(img)[0]
