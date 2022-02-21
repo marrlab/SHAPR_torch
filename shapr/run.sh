@@ -6,6 +6,10 @@ else
   PARAMS=" --params $1";
 fi
 
+# Shift remainder of all parameters; we can drop $1 since we already
+# handled it above.
+shift
+
 sbatch -p gpu_p               \
        -J "topo_shapr"        \
        -o "topo_shapr%j.out"  \
@@ -15,4 +19,4 @@ sbatch -p gpu_p               \
        --cpus-per-task=4      \
        --mem=4G               \
        --nice=10000           \
-       --wrap "poetry run python run_train_script.py $PARAMS"
+       --wrap "poetry run python sweep.py $PARAMS $@"
