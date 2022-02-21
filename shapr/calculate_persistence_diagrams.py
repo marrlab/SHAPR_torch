@@ -8,6 +8,8 @@ from shapr.utils import import_image
 from torch_topological.nn import CubicalComplex
 from torch_topological.nn import WassersteinDistance
 
+from torch_topological.utils import total_persistence
+
 import matplotlib.pyplot as plt
 
 
@@ -48,5 +50,19 @@ if __name__ == '__main__':
             axes[dim].plot([-0.1, 1.1], [-0.1, 1.1], 'k')
 
             print(info.diagram)
+
+    wasserstein = WassersteinDistance(q=2)
+
+    for x, y in zip(pers_info_all, pers_info_all[1:]):
+        for dim, (x_, y_) in enumerate(zip(x, y)):
+            dist = wasserstein(x_, y_)
+
+            print('Dimension:', dim)
+            print(
+                'Total persistence:',
+                total_persistence(x_.diagram, p=1),
+                total_persistence(y_.diagram, p=1)
+            )
+            print('Distance:', dist)
 
     plt.show()
