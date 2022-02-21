@@ -1,7 +1,10 @@
 """Calculate persistence diagrams of imput images."""
 
 import argparse
+import os
 import torch
+
+import numpy as np
 
 from shapr.utils import import_image
 
@@ -50,6 +53,18 @@ if __name__ == '__main__':
             axes[dim].plot([-0.1, 1.1], [-0.1, 1.1], 'k')
 
             print(info.diagram)
+
+            name = os.path.basename(filename)
+            name = os.path.splitext(name)[0]
+            name = f'{name}_d{dim}.txt'
+
+            np.savetxt(
+                os.path.join('/tmp', name),
+                info.diagram.numpy(),
+                fmt='%.4f',
+                header='creation destruction',
+                comments='',
+            )
 
     wasserstein = WassersteinDistance(q=2)
 
