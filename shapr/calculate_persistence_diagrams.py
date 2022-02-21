@@ -1,20 +1,14 @@
 """Calculate persistence diagrams of imput images."""
 
 import argparse
-import collections
-import itertools
-import os
 import torch
-import sys
-
-import numpy as np
-import pandas as pd
-import matplotlib.pyplot as plt
 
 from shapr.utils import import_image
 
 from torch_topological.nn import CubicalComplex
 from torch_topological.nn import WassersteinDistance
+
+import matplotlib.pyplot as plt
 
 
 if __name__ == '__main__':
@@ -30,8 +24,9 @@ if __name__ == '__main__':
 
     cubical_complex = CubicalComplex(dim=3)
 
-    all_dfs = []
-    index = 0
+    # Collects all persistence information in order to calculate
+    # distances afterwards.
+    pers_info_all = []
 
     for filename in args.FILE:
         img = import_image(filename) / 255.0
@@ -39,6 +34,19 @@ if __name__ == '__main__':
         img = img.unsqueeze(dim=0)
 
         pers_info = cubical_complex(img)[0]
+        pers_info_all.append(pers_info)
+
+        fig, axes = plt.subplots(ncols=len(pers_info), squeeze=True)
 
         for dim, info in enumerate(pers_info):
+            diagram = info.diagram
+
+            axes[dim].set_aspect('equal')
+            axes[dim].set_xlim(-0.1, 1.1)
+            axes[dim].set_ylim(-0.1, 1.1)
+            axes[dim].scatter(diagram[:, 0], diagram[:, 1])
+            axes[dim].plot([-0.1, 1.1], [-0.1, 1.1], 'k')
+
             print(info.diagram)
+
+    plt.show()
