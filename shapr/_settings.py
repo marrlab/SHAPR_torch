@@ -58,6 +58,7 @@ class SHAPRConfig(FrozenClass):
         topo_interp="__topo_interp",  # size of downsampled input data
         topo_feat_d='__topo_feat_d',  # dim. of topological features to use
         topo_feat_s='__topo_feat_s',  # superlevel features 
+        topo_loss_q='__topo_loss_q',  # exponent for loss calculations
     )
 
     __config_param_default = dict(
@@ -72,6 +73,7 @@ class SHAPRConfig(FrozenClass):
         topo_interp=0,
         topo_feat_d=2,
         topo_feat_s=False,
+        topo_loss_q=2,
     )
 
     def __init__(self, params=None):

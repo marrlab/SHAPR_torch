@@ -34,8 +34,7 @@ def topological_init(instance, settings):
         superlevel=settings.topo_feat_s
     )
 
-    # TODO: Enable different weight schemes?
-    instance.topo_loss = WassersteinDistance(q=2)
+    instance.topo_loss = WassersteinDistance(q=settings.topo_loss_q)
     instance.topo_lambda = settings.topo_lambda
     instance.topo_interp = settings.topo_interp
     instance.topo_feat_d = settings.topo_feat_d
