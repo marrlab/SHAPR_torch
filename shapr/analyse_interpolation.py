@@ -7,6 +7,8 @@ import torch
 from shapr._settings import SHAPRConfig
 from shapr.data_generator import SHAPRDataset
 
+from torch.nn import MSELoss
+
 from torch.utils.data import DataLoader
 
 
@@ -30,11 +32,10 @@ if __name__ == '__main__':
     data_set = SHAPRDataset(settings.path, all_files, settings.random_seed)
     loader = DataLoader(data_set, batch_size=8, shuffle=True)
 
-    all_dfs = []
-    index = 0
+    loss_fn = MSELoss()
 
     for _, objects in loader:
-        size = settings.topo_interp
+        size = settings.topo_interp 
         objects_interp = torch.nn.functional.interpolate(
             input=objects, size=(size, ) * 3,
         )
@@ -42,3 +43,6 @@ if __name__ == '__main__':
         objects_recon = torch.nn.functional.interpolate(
             input=objects_interp, size=(64, ) * 3,
         )
+
+        loss = loss_fn(objects, objects_recon)
+        print(loss)
