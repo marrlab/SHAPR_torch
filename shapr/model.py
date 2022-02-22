@@ -10,10 +10,14 @@ import os
 
 from metrics import *
 
+import itertools
+
 from torch_topological.nn import CubicalComplex
 from torch_topological.nn import WassersteinDistance
 
 from torch_topological.nn.data import batch_iter
+
+from torch_topological.utils import total_persistence
 
 
 def topological_init(instance, settings):
@@ -38,6 +42,8 @@ def topological_init(instance, settings):
     instance.topo_lambda = settings.topo_lambda
     instance.topo_interp = settings.topo_interp
     instance.topo_feat_d = settings.topo_feat_d
+    instance.topo_loss_q = settings.topo_loss_q
+    instance.topo_loss_r = settings.topo_loss_r
 
 
 def topological_step(instance, pred_obj, true_obj):
@@ -89,7 +95,19 @@ def topological_step(instance, pred_obj, true_obj):
         for pred_batch, true_batch in zip(pers_info_pred, pers_info_true)
     ])
 
-    return instance.topo_lambda * topo_loss.mean()
+    # TODO: Enable different reduction methods if requested by the
+    # client. The `mean` redution is a reasonable compromise.
+    topo_loss = topo_loss.mean()
+
+    if instance.topo_loss_r:
+        topo_reg = torch.stack([
+            total_persistence(info.diagram, p=instance.topo_loss_q)
+            for pred_batch in pers_info_pred for info in pred_batch
+        ])
+
+        topo_loss += topo_reg.mean()
+
+    return instance.topo_lambda * topo_loss
 
 
 class EncoderBlock(nn.Module):
