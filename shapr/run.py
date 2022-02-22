@@ -1,4 +1,9 @@
-"""Run hyperparameter sweep."""
+"""Run hyperparameter sweep or ordinary run.
+
+This is the main script for running training, either in the form of
+sweeps over hyperparameters or as a stand-alone run. It is possible
+to override *all* settings for a run.
+"""
 
 import argparse
 
