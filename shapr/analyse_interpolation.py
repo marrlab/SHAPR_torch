@@ -25,6 +25,12 @@ if __name__ == '__main__':
         type=int,
         help='If set, overrides size specified in configuration'
     )
+    parser.add_argument(
+        '-o', '--order',
+        type=int,
+        default=torch.inf,
+        help='Order of the norm calculations'
+    )
 
     args = parser.parse_args()
 
@@ -58,5 +64,5 @@ if __name__ == '__main__':
         diff = objects - objects_recon
         diff = diff.squeeze().view(diff.shape[0], -1)
 
-        loss = torch.linalg.vector_norm(diff, ord=torch.inf, dim=1)
+        loss = torch.linalg.vector_norm(diff, ord=args.order, dim=1)
         print(size, loss.mean().numpy())
