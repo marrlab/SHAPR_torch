@@ -1,6 +1,6 @@
 {
     "path": "../docs/sample/",
-    "result_path": "../results/topo-2D-l1/",
+    "result_path": "",
     "random_seed" : 0,
     "batch_size": 6,
     "epochs_SHAPR": 30,
