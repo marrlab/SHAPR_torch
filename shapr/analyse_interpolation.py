@@ -20,6 +20,11 @@ if __name__ == '__main__':
         default=None,
         help='Config file'
     )
+    parser.add_argument(
+        '-s', '--size',
+        type=int,
+        help='If set, overrides size specified in configuration'
+    )
 
     args = parser.parse_args()
 
@@ -32,8 +37,12 @@ if __name__ == '__main__':
     data_set = SHAPRDataset(settings.path, all_files, settings.random_seed)
     loader = DataLoader(data_set, batch_size=8, shuffle=True)
 
+    size = settings.topo_interp
+
+    if args.size is not None:
+        size = args.size
+
     for _, objects in loader:
-        size = settings.topo_interp 
         objects_interp = torch.nn.functional.interpolate(
             input=objects, size=(size, ) * 3,
             mode='trilinear',
@@ -50,4 +59,4 @@ if __name__ == '__main__':
         diff = diff.squeeze().view(diff.shape[0], -1)
 
         loss = torch.linalg.vector_norm(diff, ord=torch.inf, dim=1)
-        print(loss.mean())
+        print(size, loss.mean().numpy())
