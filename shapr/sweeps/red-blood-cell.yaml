@@ -6,6 +6,8 @@ project: SHAPR_topological
 parameters:
   path:
     value: "../data/Red blood cell"
+  batch_size:
+    value: 6
   result_path:
     value: ""
   epochs_SHAPR:
