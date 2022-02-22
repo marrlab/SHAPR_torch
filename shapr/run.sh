@@ -10,6 +10,8 @@ fi
 # handled it above.
 shift
 
+PARAMS="${PARAMS} $@"
+
 sbatch -p gpu_p               \
        -J "topo_shapr"        \
        -o "topo_shapr%j.out"  \
@@ -19,4 +21,4 @@ sbatch -p gpu_p               \
        --cpus-per-task=4      \
        --mem=4G               \
        --nice=10000           \
-       --wrap "poetry run python sweep.py $PARAMS $@"
+       --wrap "poetry run python sweep.py $PARAMS"
