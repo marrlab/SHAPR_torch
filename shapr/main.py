@@ -83,7 +83,7 @@ def run_train(amp: bool = False, params=None, overrides=None, args=None):
         for fold, (train_index, test_index) in enumerate(kf.split(filenames))
     ]
 
-    if args.fold is not None:
+    if args is not None and args.fold is not None:
         fold = args.fold
 
         run_fold(
