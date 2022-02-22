@@ -21,4 +21,4 @@ sbatch -p gpu_p               \
        --cpus-per-task=4      \
        --mem=4G               \
        --nice=10000           \
-       --wrap "poetry run python sweep.py $PARAMS"
+       --wrap "poetry run python run.py $PARAMS"
