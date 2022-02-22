@@ -61,8 +61,18 @@ def topological_step(instance, pred_obj, true_obj):
 
     if instance.topo_interp != 0:
         size = (instance.topo_interp,) * 3
-        pred_obj_ = nn.functional.interpolate(input=pred_obj, size=size)
-        true_obj_ = nn.functional.interpolate(input=true_obj, size=size)
+        pred_obj_ = nn.functional.interpolate(
+            input=pred_obj,
+            size=size,
+            mode='trilinear',
+            align_corners=True,
+        )
+        true_obj_ = nn.functional.interpolate(
+            input=true_obj,
+            size=size,
+            mode='trilinear',
+            align_corners=True,
+        )
 
     # No interpolation desired by client; use the original data set,
     # thus making everything slower.
