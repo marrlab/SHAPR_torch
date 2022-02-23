@@ -25,12 +25,6 @@ if __name__ == '__main__':
         type=int,
         help='If set, overrides size specified in configuration'
     )
-    parser.add_argument(
-        '-o', '--order',
-        type=int,
-        default=torch.inf,
-        help='Order of the norm calculations'
-    )
 
     args = parser.parse_args()
 
@@ -48,6 +42,8 @@ if __name__ == '__main__':
     if args.size is not None:
         size = args.size
 
+    loss_fn = MSELoss()
+
     for _, objects in loader:
         objects_interp = torch.nn.functional.interpolate(
             input=objects, size=(size, ) * 3,
@@ -61,8 +57,5 @@ if __name__ == '__main__':
             align_corners=True,
         )
 
-        diff = objects - objects_recon
-        diff = diff.squeeze().view(diff.shape[0], -1)
-
-        loss = torch.linalg.vector_norm(diff, ord=args.order, dim=1)
+        loss = loss_fn(objects, objects_recon)
         print(size, loss.mean().numpy())
