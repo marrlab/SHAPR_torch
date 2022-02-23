@@ -15,7 +15,7 @@ parameters:
   epochs_SHAPR:
     value: 100
   epochs_cSHAPR:
-    value: 0
+    value: 100
   topo_interp:
     value: 16
   topo_feat_d:
