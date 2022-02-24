@@ -1,0 +1,28 @@
+method: grid
+
+entity: shapr_topological
+project: SHAPR_topological
+
+parameters:
+  path:
+    value: "../data/Red blood cell"
+  result_path:
+    value: ""
+  batch_size:
+    value: 3
+  epochs_SHAPR:
+    value: 100
+  epochs_cSHAPR:
+    value: 100
+  topo_interp:
+    value: 4
+  topo_feat_d:
+    value: 0
+  topo_lambda:
+    value: 0.0
+  topo_loss_r:
+    value: True
+  fold:
+    values: [0, 1, 2, 3, 4]
+  
+program: run.py
