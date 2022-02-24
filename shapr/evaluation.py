@@ -169,8 +169,16 @@ if __name__ == '__main__':
     df_iou = pd.DataFrame.from_dict(iou_inv)
     df_iou['filename'] = processed
 
+    print('Mean for IoU error:')
+    print(df_iou.mean(axis='rows', numeric_only=True).values)
+
     for col in df_iou.select_dtypes('number').columns:
         print(df_iou[[col, 'filename']].sort_values(by=col)[:5])
+
+    df_volume = pd.DataFrame.from_dict(volume)
+
+    print('Mean for volume:')
+    print(df_volume.mean(axis='rows', numeric_only=True).values)
 
     fig, axes = plt.subplots(
         nrows=4 - 2 * args.quick,
@@ -179,7 +187,7 @@ if __name__ == '__main__':
     )
 
     swarmplot(df_iou, '1 - IoU', axes[0])
-    swarmplot(pd.DataFrame.from_dict(volume), 'Volume error', axes[1])
+    swarmplot(df_volume, 'Volume error', axes[1])
 
     filenames = list(map(os.path.basename, filenames))
 
