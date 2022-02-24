@@ -7,9 +7,9 @@ parameters:
   path:
     value: "../data/Red blood cell"
   result_path:
-    value: "../results/red-blood-cell-at-d1"
+    value: "../results/red-blood-cell-at-sb-d1"
   batch_size:
-    value: 6
+    value: 3
   epochs_SHAPR:
     value: 100
   epochs_cSHAPR:
