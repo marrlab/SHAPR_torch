@@ -20,104 +20,108 @@ from torch_topological.nn.data import batch_iter
 from torch_topological.utils import total_persistence
 
 
-def topological_init(instance, settings):
-    """Initialise topological components for given class instance.
+class TopologicalApproximationMixin:
+    """Mixin class to enable topological approximations.
 
-    Parameters
-    ----------
-    instance: pl.LightningModule
-        Class instance that requires some topological attributes.
-
-    settings : SHAPRConfig
-        Settings to add to the object
+    This is a mixin class provided for the client's convenience. It
+    bundles topological calculations and initialisations instead of
+    poviding them as global functions.
     """
-    # Required for topological feature calculation. We want cubical
-    # complexes because they handle images intrinsically.
-    instance.cubical_complex = CubicalComplex(
-        dim=3,
-        superlevel=settings.topo_feat_s
-    )
 
-    instance.topo_loss = WassersteinDistance(q=settings.topo_loss_q)
-    instance.topo_lambda = settings.topo_lambda
-    instance.topo_interp = settings.topo_interp
-    instance.topo_feat_d = settings.topo_feat_d
-    instance.topo_loss_q = settings.topo_loss_q
-    instance.topo_loss_r = settings.topo_loss_r
+    def __init__(self, settings):
+        """Initialise topological components for given class instance.
 
-
-def topological_step(instance, pred_obj, true_obj):
-    """Calculate topological features and adjust loss.
-
-    This function does the 'heavy lifting' when it comes to the use of
-    topological features. Given a set of predicted objects and true
-    objects, it calculates the appropriate topological loss.
-    """
-    # Check whether there's anything to do here. This makes it
-    # possible to disable the calculation of topological features
-    # altogether.
-    if instance.topo_lambda == 0.0:
-        return 0.0
-
-    if instance.topo_interp != 0:
-        size = (instance.topo_interp,) * 3
-        pred_obj_ = nn.functional.interpolate(
-            input=pred_obj,
-            size=size,
-            mode='trilinear',
-            align_corners=True,
-        )
-        true_obj_ = nn.functional.interpolate(
-            input=true_obj,
-            size=size,
-            mode='trilinear',
-            align_corners=True,
+        Parameters
+        ----------
+        settings : SHAPRConfig
+            Settings to add to the object
+        """
+        # Required for topological feature calculation. We want cubical
+        # complexes because they handle images intrinsically.
+        self.cubical_complex = CubicalComplex(
+            dim=3,
+            superlevel=settings.topo_feat_s
         )
 
-    # No interpolation desired by client; use the original data set,
-    # thus making everything slower.
-    else:
-        pred_obj_ = pred_obj
-        true_obj_ = true_obj
+        self.topo_loss = WassersteinDistance(q=settings.topo_loss_q)
+        self.topo_lambda = settings.topo_lambda
+        self.topo_interp = settings.topo_interp
+        self.topo_feat_d = settings.topo_feat_d
+        self.topo_loss_q = settings.topo_loss_q
+        self.topo_loss_r = settings.topo_loss_r
 
-    # Calculate topological features of predicted 3D tensor and true
-    # 3D tensor. The `squeeze()` ensures that we are ignoring single
-    # dimensions such as channels.
-    pers_info_pred = instance.cubical_complex(pred_obj_.squeeze())
-    pers_info_true = instance.cubical_complex(true_obj_.squeeze())
+    def topological_step(self, pred_obj, true_obj):
+        """Calculate topological features and adjust loss.
 
-    # Check whether all dimensions should be used or not. If `dim` is
-    # `None`, we will not perform any filtering of the resulting
-    # persistence information instances.
-    dim = instance.topo_feat_d if 0 <= instance.topo_feat_d <= 2 else None
+        This function does the 'heavy lifting' when it comes to the use of
+        topological features. Given a set of predicted objects and true
+        objects, it calculates the appropriate topological loss.
+        """
+        # Check whether there's anything to do here. This makes it
+        # possible to disable the calculation of topological features
+        # altogether.
+        if self.topo_lambda == 0.0:
+            return 0.0
 
-    if dim is not None:
-        pers_info_pred = [
-            x for x in batch_iter(pers_info_pred, dim=instance.topo_feat_d)
-        ]
+        if self.topo_interp != 0:
+            size = (self.topo_interp,) * 3
+            pred_obj_ = nn.functional.interpolate(
+                input=pred_obj,
+                size=size,
+                mode='trilinear',
+                align_corners=True,
+            )
+            true_obj_ = nn.functional.interpolate(
+                input=true_obj,
+                size=size,
+                mode='trilinear',
+                align_corners=True,
+            )
 
-        pers_info_true = [
-            x for x in batch_iter(pers_info_true, dim=instance.topo_feat_d)
-        ]
+        # No interpolation desired by client; use the original data set,
+        # thus making everything slower.
+        else:
+            pred_obj_ = pred_obj
+            true_obj_ = true_obj
 
-    topo_loss = torch.stack([
-        instance.topo_loss(pred_batch, true_batch)
-        for pred_batch, true_batch in zip(pers_info_pred, pers_info_true)
-    ])
+        # Calculate topological features of predicted 3D tensor and true
+        # 3D tensor. The `squeeze()` ensures that we are ignoring single
+        # dimensions such as channels.
+        pers_info_pred = self.cubical_complex(pred_obj_.squeeze())
+        pers_info_true = self.cubical_complex(true_obj_.squeeze())
 
-    # TODO: Enable different reduction methods if requested by the
-    # client. The `mean` redution is a reasonable compromise.
-    topo_loss = topo_loss.mean()
+        # Check whether all dimensions should be used or not. If `dim` is
+        # `None`, we will not perform any filtering of the resulting
+        # persistence information selfs.
+        dim = self.topo_feat_d if 0 <= self.topo_feat_d <= 2 else None
 
-    if instance.topo_loss_r:
-        topo_reg = torch.stack([
-            total_persistence(info.diagram, p=instance.topo_loss_q)
-            for pred_batch in pers_info_pred for info in pred_batch
+        if dim is not None:
+            pers_info_pred = [
+                x for x in batch_iter(pers_info_pred, dim=self.topo_feat_d)
+            ]
+
+            pers_info_true = [
+                x for x in batch_iter(pers_info_true, dim=self.topo_feat_d)
+            ]
+
+        topo_loss = torch.stack([
+            self.topo_loss(pred_batch, true_batch)
+            for pred_batch, true_batch in zip(pers_info_pred, pers_info_true)
         ])
 
-        topo_loss += topo_reg.mean()
+        # TODO: Enable different reduction methods if requested by the
+        # client. The `mean` redution is a reasonable compromise.
+        topo_loss = topo_loss.mean()
 
-    return instance.topo_lambda * topo_loss
+        if self.topo_loss_r:
+            topo_reg = torch.stack([
+                total_persistence(info.diagram, p=self.topo_loss_q)
+                for pred_batch in pers_info_pred for info in pred_batch
+            ])
+
+            topo_loss += topo_reg.mean()
+
+        return self.topo_lambda * topo_loss
 
 
 class EncoderBlock(nn.Module):
@@ -331,9 +335,10 @@ class SHAPR(nn.Module):
         return x_dec
 
 
-class LightningSHAPRoptimization(pl.LightningModule):
+class LightningSHAPRoptimization(pl.LightningModule, TopologicalApproximationMixin):
     def __init__(self, settings, cv_train_filenames, cv_val_filenames, cv_test_filenames):
-        super(LightningSHAPRoptimization, self).__init__()
+        super().__init__()
+        TopologicalApproximationMixin.__init__(self, settings)
 
         self.random_seed = settings.random_seed
         self.path = settings.path
@@ -351,8 +356,6 @@ class LightningSHAPRoptimization(pl.LightningModule):
         self.dice = Dice_loss()
         self.volume_error = Volume_error()
         self.iou_error = IoU_error()
-
-        topological_init(self, settings)
 
     def forward(self, x):
         return self.shapr(x)
@@ -390,7 +393,7 @@ class LightningSHAPRoptimization(pl.LightningModule):
 
         self.log("train/supervised_loss", loss, on_epoch=True, on_step=True)
 
-        topo_loss = topological_step(self, pred, true_obj)
+        topo_loss = self.topological_step(pred, true_obj)
 
         self.log(
             "train/topo_loss",
@@ -410,7 +413,7 @@ class LightningSHAPRoptimization(pl.LightningModule):
 
         self.log("val/supervised_loss", loss, on_epoch=True, on_step=True)
 
-        topo_loss = topological_step(self, pred, true_obj)
+        topo_loss = self.topological_step(pred, true_obj)
 
         self.log(
             "val/topo_loss",
@@ -450,9 +453,10 @@ class LightningSHAPRoptimization(pl.LightningModule):
 
 
 # Define GAN
-class LightningSHAPR_GANoptimization(pl.LightningModule):
+class LightningSHAPR_GANoptimization(pl.LightningModule, TopologicalApproximationMixin):
     def __init__(self, settings, cv_train_filenames, cv_val_filenames,cv_test_filenames,  SHAPR_best_model_path):
-        super(LightningSHAPR_GANoptimization, self).__init__()
+        super().__init__()
+        TopologicalApproximationMixin.__init__(self, settings)
 
         self.random_seed = settings.random_seed
         self.path = settings.path
@@ -469,8 +473,6 @@ class LightningSHAPR_GANoptimization(pl.LightningModule):
 
         # Define model
         #self.shapr = SHAPR()
-
-        topological_init(self, settings)
 
         self.shapr = SHAPR()
         if settings.epochs_SHAPR > 0:
@@ -544,7 +546,7 @@ class LightningSHAPR_GANoptimization(pl.LightningModule):
             self.log("train/adverserial_loss", g_loss, on_epoch=True, on_step=True)
             loss = (10 * supervised_loss + g_loss) / 11
 
-            topo_loss = topological_step(self, self(images), true_obj)
+            topo_loss = self.topological_step(self(images), true_obj)
             self.log('train/topo_loss', topo_loss)
 
             loss += topo_loss
@@ -584,7 +586,7 @@ class LightningSHAPR_GANoptimization(pl.LightningModule):
         pred = self(images)
         loss = self.binary_crossentropy_Dice(pred, true_obj)
         self.log("val/supervised_loss", loss, on_epoch=True, on_step=True)
-        topo_loss = topological_step(self, pred, true_obj)
+        topo_loss = self.topological_step(pred, true_obj)
         self.log("val/topo_loss",topo_loss,on_epoch=True)
         loss += topo_loss
         self.log("val/combined_loss", loss, on_epoch=True)
