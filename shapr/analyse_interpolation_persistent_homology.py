@@ -43,7 +43,7 @@ if __name__ == '__main__':
     if args.size is not None:
         size = args.size
 
-    loss_fn = WassersteinDistance(q=torch.inf)
+    loss_fn = WassersteinDistance(q=1)
 
     cubical_complex = CubicalComplex(dim=3)
 
@@ -54,6 +54,9 @@ if __name__ == '__main__':
             align_corners=True,
         )
 
+        objects = objects.squeeze()
+        objects_interp = objects_interp.squeeze()
+
         pers_info_source = cubical_complex(objects)
         pers_info_interp = cubical_complex(objects_interp)
 
@@ -63,4 +66,4 @@ if __name__ == '__main__':
             zip(pers_info_source, pers_info_interp)
         ])
 
-        print(loss)
+        print(loss.mean())
