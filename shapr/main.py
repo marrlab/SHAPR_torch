@@ -2,7 +2,7 @@ from shapr._settings import SHAPRConfig
 from shapr.data_generator import get_test_image
 from shapr.metrics import Dice_loss, IoU_error, Volume_error
 
-from model import LightningSHAPRoptimization, LightningSHAPR_GANoptimization
+from shapr.model import LightningSHAPRoptimization, LightningSHAPR_GANoptimization
 
 from skimage.io import imsave
 

@@ -2,13 +2,13 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 import pytorch_lightning as pl
-from data_generator import SHAPRDataset
+from shapr.data_generator import SHAPRDataset
 from torch.utils.data import DataLoader, random_split
-from metrics import Dice_loss
+from shapr.metrics import Dice_loss
 from collections import OrderedDict
 import os
 
-from metrics import *
+from shapr.metrics import *
 
 import itertools
 
