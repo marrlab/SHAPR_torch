@@ -285,26 +285,3 @@ if __name__ == '__main__':
     plt.tight_layout()
     plt.savefig(config['output'], backend='pgf')
     plt.show()
-
-########################################################################
-# HIC SVNT DRACONES
-########################################################################
-
-mask_path = "/media/dominik/LaCie/SHAPR_pytorch/Organoid/mask/"
-
-volume = []
-mask_area = []
-
-files = os.listdir(pytorch_path)
-print(len(files))
-
-fname = []
-for index, file in enumerate(files): 
-    pytorchdata = np.squeeze(norm_thres(np.nan_to_num(imread(pytorch_path + file))))
-    mask = np.squeeze(norm_thres(np.nan_to_num(imread(mask_path + file))))
-    volume.append(np.sum(pytorchdata))
-
-    mask_area.append(np.sum(mask))
-
-plt.scatter(mask_area, volume, s = 1)
-plt.show()
