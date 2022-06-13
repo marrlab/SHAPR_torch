@@ -28,7 +28,8 @@ import seaborn as sns
 
 plt.rcParams.update({
     'font.family': 'serif',
-    'text.usetex': True,
+    'text.usetex': False,
+    'svg.fonttype': 'none',
 })
 
 
@@ -256,7 +257,7 @@ if __name__ == '__main__':
         ncols=4 - 2 * args.quick,
         squeeze=True,
         sharey=True,
-        figsize=(6, 5)
+        figsize=(10, 3)
     )
 
     filenames = list(map(os.path.basename, filenames))
