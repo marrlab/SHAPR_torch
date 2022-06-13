@@ -104,6 +104,72 @@ def get_roughness(obj):
     return roughness
 
 
+def evaluate(source, target, quick=False):
+    """Evaluate source and target image along different dimensions.
+
+    Parameters
+    ----------
+    quick : bool
+        If set, only calculates metrics that do not require extensive
+        surface meshing operations.
+
+    Returns
+    -------
+    dict
+        A dictionary with the keys being abbreviations of the error
+        metrics, and the values being the result of the comparison.
+        Together, these dictionaries will be combined into a larger
+        data frame that contains the raw values.
+    """
+    data = {
+        'iou_error': (1 - IoU(source, target)),
+        'volume_error': (
+            np.abs(np.sum(target) - np.sum(source)) / np.sum(source)
+        )
+    }
+
+    if not quick:
+        source_surface = get_surface(source)
+        data['surface_error'] = (
+            np.abs(get_surface(target) - source_surface)
+            / source_surface
+        )
+
+        source_roughness = get_roughness(source)
+        data['roughness_error'] = (
+            np.abs(get_roughness(target) - source_roughness)
+            / source_roughness
+        )
+
+    return data
+
+
+def make_df(data, metric):
+    """Create data frame for all targets, using a given metric.
+
+    Parameters
+    ----------
+    data : dict of `pd.DataFrame`
+        Data frames; the keys are supposed to belong to different
+        targets, while the values store all evaluated metrics.
+
+    metric : str
+        Metric to extract; must refer to a valid column of all the data
+        frames.
+
+    Returns
+    -------
+    pd.DataFrame
+        Long-form data set storing the results of `metric`.
+    """
+    result = {}
+
+    for target in data:
+        result[target] = data[target][metric]
+
+    return pd.DataFrame.from_dict(result)
+
+
 def swarmplot(data, label, ax):
     """Create swarmplot with specific label."""
     ax = sns.violinplot(
@@ -139,13 +205,12 @@ if __name__ == '__main__':
     )
 
     args = parser.parse_args()
-
     config = parse_config(args.CONFIG)
 
-    iou_inv = collections.defaultdict(list)
-    volume = collections.defaultdict(list)
-    surface = collections.defaultdict(list)
-    roughness = collections.defaultdict(list)
+    # Stores all metrics calculated during the script run. The key
+    # refers to one of the targets that is configured by the user,
+    # while the values are the resulting metrics.
+    data = collections.defaultdict(list)
 
     source_path = config['source']['path']
     filenames = sorted(os.listdir(source_path))
@@ -180,40 +245,13 @@ if __name__ == '__main__':
             )
 
             label = target_['label']
-
-            iou_inv[label].append(1 - IoU(source, target))
-            volume[label].append(
-                np.abs(np.sum(target) - np.sum(source)) / np.sum(source)
+            data[label].append(
+                evaluate(source, target, args.quick)
             )
 
-            if not args.quick:
-                source_surface = get_surface(source)
-                surface[label].append(
-                    np.abs(get_surface(target) - source_surface)
-                    / source_surface
-                )
-
-                source_roughness = get_roughness(source)
-                roughness[label].append(
-                    np.abs(get_roughness(target) - source_roughness)
-                    / source_roughness
-                )
-
-    # Since we rank data sets based on this quantity, it makes sense to
-    # calculate a fixed data frame here.
-    df_iou = pd.DataFrame.from_dict(iou_inv)
-    df_iou['filename'] = processed
-
-    print('Mean for IoU error:')
-    print(df_iou.mean(axis='rows', numeric_only=True).values)
-
-    for col in df_iou.select_dtypes('number').columns:
-        print(df_iou[[col, 'filename']].sort_values(by=col)[:5])
-
-    df_volume = pd.DataFrame.from_dict(volume)
-
-    print('Mean for volume:')
-    print(df_volume.mean(axis='rows', numeric_only=True).values)
+    for target in data.keys():
+        data[target] = pd.DataFrame.from_records(data[target])
+        data[target]['filename'] = processed
 
     fig, axes = plt.subplots(
         ncols=4 - 2 * args.quick,
@@ -222,24 +260,24 @@ if __name__ == '__main__':
         figsize=(5, 6)
     )
 
-    swarmplot(df_iou, '1 - IoU', axes[0])
-    swarmplot(df_volume, 'Rel. volume error', axes[1])
-
     filenames = list(map(os.path.basename, filenames))
 
     if len(filenames) > len(processed):
         skipped = sorted(set(filenames) - set(processed))
         print(f'Skipped some files: {skipped}')
 
+    swarmplot(make_df(data, 'iou_error'), '1 - IoU', axes[0])
+    swarmplot(make_df(data, 'volume_error'), 'Rel. volume error', axes[1])
+
     if not args.quick:
         swarmplot(
-            pd.DataFrame.from_dict(surface),
+            make_df(data, 'surface_error'),
             'Rel. surface area error',
             axes[2]
         )
 
         swarmplot(
-            pd.DataFrame.from_dict(roughness),
+            make_df(data, 'roughness_error'),
             'Rel. surface roughness error',
             axes[3]
         )
