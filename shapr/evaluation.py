@@ -29,7 +29,6 @@ import seaborn as sns
 plt.rcParams.update({
     'font.family': 'serif',
     'text.usetex': True,
-    'pgf.rcfonts': False,
 })
 
 
@@ -283,5 +282,5 @@ if __name__ == '__main__':
         )
 
     plt.tight_layout()
-    plt.savefig(config['output'], backend='pgf')
+    plt.savefig(config['output'], backend='svg')
     plt.show()

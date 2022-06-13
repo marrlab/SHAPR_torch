@@ -12,5 +12,5 @@
     "path": "../results/red-blood-cell-at-d0"
     }
   ],
-  "output": "../plots/red-blood-cell.pdf"
+  "output": "../plots/red-blood-cell.svg"
 }
