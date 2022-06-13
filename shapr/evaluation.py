@@ -1,7 +1,15 @@
-"""Evaluate data with respect to ground truth."""
+"""Evaluate data with respect to ground truth and plot it.
+
+This script generates plots for evaluating runs of SHAPR. Different
+scenarios or models can be tested against a "ground truth" data set
+and the results are stored in PDF files.
+
+This script requres a configuration file to work.
+"""
 
 import argparse
 import collections
+import json
 import os
 import trimesh
 
@@ -11,13 +19,40 @@ import numpy as np
 import pandas as pd
 
 from skimage import measure
+from skimage.filters import threshold_otsu
 from skimage.io import imread
-
 
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-from skimage.filters import threshold_otsu
+
+plt.rcParams.update({
+    'font.family': 'serif',
+    'text.usetex': True,
+    'pgf.rcfonts': False,
+})
+
+
+def parse_config(filename):
+    """Parse JSON configuration file.
+
+    Parameters
+    ----------
+    filename : str
+        Input filename; must be a JSON configuration file.
+
+    Returns
+    -------
+    Tuple of configuration and target keys
+        The parsed configuration is returned as a dictionary; for
+        convenience purposes, source information and all target keys are
+        returned as well.
+    """
+    with open(filename) as f:
+        config = json.load(f)
+
+    targets = [k for k in config.keys() if k.startswith('target_')]
+    return config, targets
 
 
 def norm_thres(data):
@@ -94,9 +129,7 @@ def swarmplot(data, label, ax):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-
-    parser.add_argument('SOURCE', type=str, help='Source directory')
-    parser.add_argument('TARGET', type=str, nargs='+', help='Target directory')
+    parser.add_argument('CONFIG', type=str, help='Configuration file')
 
     parser.add_argument(
         '-q', '--quick',
@@ -107,23 +140,25 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
+    config, targets = parse_config(args.CONFIG)
+
     iou_inv = collections.defaultdict(list)
     volume = collections.defaultdict(list)
     surface = collections.defaultdict(list)
     roughness = collections.defaultdict(list)
 
-    filenames = sorted(os.listdir(args.SOURCE))
+    source_path = config['source']
+    filenames = sorted(os.listdir(source_path))
     processed = []
 
     for filename in tqdm(filenames, desc='File'):
-        source = imread(os.path.join(args.SOURCE, filename)) / 255.0
+        source = imread(os.path.join(source_path, filename)) / 255.0
 
         # First check whether all files exist; else, we skip processing
         # in order to ensure consistent lists.
-
         skip = False
-        for target_ in args.TARGET:
-            target_path = os.path.join(target_, filename)
+        for target_ in targets:
+            target_path = os.path.join(config[target_]['path'], filename)
 
             if not os.path.exists(target_path):
                 skip = True
@@ -134,8 +169,8 @@ if __name__ == '__main__':
         else:
             processed.append(os.path.basename(filename))
 
-        for target_ in args.TARGET:
-            target_path = os.path.join(target_, filename)
+        for target_ in targets:
+            target_path = os.path.join(config[target_]['path'], filename)
 
             target = np.squeeze(
                 norm_thres(np.nan_to_num(
@@ -144,22 +179,22 @@ if __name__ == '__main__':
                 )
             )
 
-            name = os.path.basename(target_)
+            label = config[target_]['label']
 
-            iou_inv[name].append(1 - IoU(source, target))
-            volume[name].append(
+            iou_inv[label].append(1 - IoU(source, target))
+            volume[label].append(
                 np.abs(np.sum(target) - np.sum(source)) / np.sum(source)
             )
 
             if not args.quick:
                 source_surface = get_surface(source)
-                surface[name].append(
+                surface[label].append(
                     np.abs(get_surface(target) - source_surface)
                     / source_surface
                 )
 
                 source_roughness = get_roughness(source)
-                roughness[name].append(
+                roughness[label].append(
                     np.abs(get_roughness(target) - source_roughness)
                     / source_roughness
                 )
@@ -209,6 +244,7 @@ if __name__ == '__main__':
         )
 
     plt.tight_layout()
+    plt.savefig(config['output'], backend='pgf')
     plt.show()
 
 ########################################################################
