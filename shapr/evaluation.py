@@ -257,7 +257,7 @@ if __name__ == '__main__':
         ncols=4 - 2 * args.quick,
         squeeze=True,
         sharey=True,
-        figsize=(5, 6)
+        figsize=(6, 5)
     )
 
     filenames = list(map(os.path.basename, filenames))
