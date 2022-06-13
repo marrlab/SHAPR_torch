@@ -216,13 +216,13 @@ if __name__ == '__main__':
     print(df_volume.mean(axis='rows', numeric_only=True).values)
 
     fig, axes = plt.subplots(
-        nrows=4 - 2 * args.quick,
+        ncols=4 - 2 * args.quick,
         squeeze=True,
         figsize=(5, 6)
     )
 
     swarmplot(df_iou, '1 - IoU', axes[0])
-    swarmplot(df_volume, 'Volume error', axes[1])
+    swarmplot(df_volume, 'Rel. volume error', axes[1])
 
     filenames = list(map(os.path.basename, filenames))
 
@@ -233,13 +233,13 @@ if __name__ == '__main__':
     if not args.quick:
         swarmplot(
             pd.DataFrame.from_dict(surface),
-            'Surface error',
+            'Rel. surface area error',
             axes[2]
         )
 
         swarmplot(
             pd.DataFrame.from_dict(roughness),
-            'Roughness error',
+            'Rel. surface roughness error',
             axes[3]
         )
 
