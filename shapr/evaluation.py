@@ -218,6 +218,7 @@ if __name__ == '__main__':
     fig, axes = plt.subplots(
         ncols=4 - 2 * args.quick,
         squeeze=True,
+        sharey=True,
         figsize=(5, 6)
     )
 
