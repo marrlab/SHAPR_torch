@@ -1,12 +1,16 @@
 {
-  "source": "../data/Red blood cell/obj",
-  "target_1": {
-    "label": "With topological loss",
-    "path": "../results/red-blood-cell-at-d2"
+  "source": {
+    "path": "../data/Red blood cell/obj"
   },
-  "target_2": {
+  "targets": [
+    {
+      "label": "With topological loss",
+      "path": "../results/red-blood-cell-at-d2"
+    },
+    {
     "label": "Without topological loss",
     "path": "../results/red-blood-cell-at-d0"
-  },
+    }
+  ],
   "output": "../plots/red-blood-cell.pdf"
 }

@@ -43,16 +43,16 @@ def parse_config(filename):
 
     Returns
     -------
-    Tuple of configuration and target keys
-        The parsed configuration is returned as a dictionary; for
-        convenience purposes, source information and all target keys are
-        returned as well.
+    dict
+        The parsed configuration.
     """
     with open(filename) as f:
         config = json.load(f)
 
-    targets = [k for k in config.keys() if k.startswith('target_')]
-    return config, targets
+    assert 'source' in config
+    assert 'targets' in config
+
+    return config
 
 
 def norm_thres(data):
@@ -140,14 +140,14 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
-    config, targets = parse_config(args.CONFIG)
+    config = parse_config(args.CONFIG)
 
     iou_inv = collections.defaultdict(list)
     volume = collections.defaultdict(list)
     surface = collections.defaultdict(list)
     roughness = collections.defaultdict(list)
 
-    source_path = config['source']
+    source_path = config['source']['path']
     filenames = sorted(os.listdir(source_path))
     processed = []
 
@@ -157,8 +157,8 @@ if __name__ == '__main__':
         # First check whether all files exist; else, we skip processing
         # in order to ensure consistent lists.
         skip = False
-        for target_ in targets:
-            target_path = os.path.join(config[target_]['path'], filename)
+        for target_ in config['targets']:
+            target_path = os.path.join(target_['path'], filename)
 
             if not os.path.exists(target_path):
                 skip = True
@@ -169,8 +169,8 @@ if __name__ == '__main__':
         else:
             processed.append(os.path.basename(filename))
 
-        for target_ in targets:
-            target_path = os.path.join(config[target_]['path'], filename)
+        for target_ in config['targets']:
+            target_path = os.path.join(target_['path'], filename)
 
             target = np.squeeze(
                 norm_thres(np.nan_to_num(
@@ -179,7 +179,7 @@ if __name__ == '__main__':
                 )
             )
 
-            label = config[target_]['label']
+            label = target_['label']
 
             iou_inv[label].append(1 - IoU(source, target))
             volume[label].append(
