@@ -57,7 +57,7 @@ if __name__ == '__main__':
     data = []
 
     for s in [2, 4, 8, 16, 32]:
-        data.append(run_experiment(n, S, s, d, True))
+        data.append(run_experiment(n, S, s, d, False))
 
     data = pd.concat(data).T
 
