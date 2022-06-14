@@ -43,7 +43,7 @@ if __name__ == '__main__':
     if args.size is not None:
         size = args.size
 
-    loss_fn = WassersteinDistance(q=1)
+    loss_fn = WassersteinDistance(q=2)
 
     cubical_complex = CubicalComplex(dim=3)
 
@@ -66,4 +66,6 @@ if __name__ == '__main__':
             zip(pers_info_source, pers_info_interp)
         ])
 
-        print(loss.mean())
+        for value in loss.numpy():
+            print(size, value)
+
