@@ -154,6 +154,19 @@ path
 ```
 
 
+## Additional analyses
+
+To run the analysis of the interpolation (i.e. downsampling) quality as
+described in the supplementary materials, run the following command from
+the `shapr` directory:
+
+```shell
+$ python -m scripts.analyse_interpolation -s 8 -p config/small-0D.json
+```
+
+This will generate the interpolation/downsampling errors for a volume of
+side length `s = 8`.
+
 ## Contributing
 
 We are happy about any contributions. For any suggested changes, please send a pull request to the *develop* branch.
