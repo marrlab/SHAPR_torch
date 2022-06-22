@@ -1,4 +1,4 @@
-"""Calculate persistence diagrams of imput images."""
+"""Calculate persistence diagrams of input images."""
 
 import argparse
 import os
