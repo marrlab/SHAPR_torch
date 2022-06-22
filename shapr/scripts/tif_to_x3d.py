@@ -34,6 +34,7 @@ def to_x3d(name, image_data):
 
     plt.show(volume, axes=1, viewup='z')
     plt.export(name, binary=False)
+    plt.close()
 
 
 if __name__ == '__main__':
