@@ -153,11 +153,23 @@ path
 
 ```
 
-
 ## Additional analyses
 
 Next to the SHAPR model, we also provide additional scripts that permit
 zooming into various aspects of SHAPR and persistent homology.
+
+### Gallery of results
+
+After running SHAPR, you can use the `make_gallery.py` script to create
+a small gallery of all outputs. This is great for getting an overview of
+how the model performed:
+
+```shell
+# Note that we are using a sample directory that contains ground truth
+# objects. In a realistic scenario, you would rnu this command for the
+# outputs of your own model.
+$ python -m scripts.make_gallery ../docs/sample/obj 
+```
 
 ### Interpolation errors
 
