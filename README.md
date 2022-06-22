@@ -156,6 +156,11 @@ path
 
 ## Additional analyses
 
+Next to the SHAPR model, we also provide additional scripts that permit
+zooming into various aspects of SHAPR and persistent homology.
+
+### Interpolation errors
+
 To run the analysis of the interpolation (i.e. downsampling) quality as
 described in the supplementary materials, run the following command from
 the `shapr` directory:
@@ -166,6 +171,15 @@ $ python -m scripts.analyse_interpolation -s 8 -p config/small-0D.json
 
 This will generate the interpolation/downsampling errors for a volume of
 side length `s = 8`.
+
+### Persistent homology of images
+
+To calculate persistent homology of input images, you can use the
+following script:
+
+```shell
+$ python -m scripts.calculate_persistence_diagrams ../docs/sample/obj/*.tif
+```
 
 ## Contributing
 
