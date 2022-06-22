@@ -156,7 +156,20 @@ path
 ## Additional analyses
 
 Next to the SHAPR model, we also provide additional scripts that permit
-zooming into various aspects of SHAPR and persistent homology.
+zooming into various aspects of SHAPR and persistent homology. All of
+these scripts are to be found in the `scripts` subdirectory.
+
+### Evaluation of results
+
+To create the evaluation plots with all errors, as shown in the paper,
+run the `evaluation.py` script:
+
+```
+$ python -m scripts.evaluation evaluation/red-blood-cell.json
+```
+
+You can optionally specify the `-q` option in order to skip evaluation
+metrics that are computationally more complex to compute.
 
 ### Gallery of results
 
