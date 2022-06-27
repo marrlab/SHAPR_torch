@@ -6,15 +6,15 @@ def read(fname):
     return open(os.path.join(os.path.dirname(__file__), fname)).read()
 
 setup(
-    name = 'shapr',
-    version='0.0.2',
-    author='Dominik Waibel, Niklas Kiermeyer, Mohammad Mirkazemi',
+    name = 'shapr_torch',
+    version='0.0.1',
+    author='Dominik Waibel, Bastian Rieck',
     author_email='dominik.waibel@helmholtz-muenchen.de',
     license='MIT',
     keywords='Computational Biology Deep Learning',
     packages=find_packages(exclude=['doc*', 'test*']),
-    url='https://github.com/marrlab/ShapeAE',
-    install_requires=['pytorch', 'imageio', 'scikit-image', 'scikit-learn'],
+    url='https://github.com/marrlab/SHAPR_torch/',
+    install_requires=['torch', 'imageio', 'scikit-image', 'scikit-learn' 'torch-topological'],
     classifiers=[
 	'Development Status :: 3 - Alpha',
 	'Topic :: Scientific/Engineering :: Image Recognition',
