@@ -30,7 +30,7 @@ from skimage.io import imread
 
 plt.rcParams.update({
     'font.family': 'serif',
-    'text.usetex': False,
+    'text.usetex': True,
     'svg.fonttype': 'none',
 })
 
@@ -179,7 +179,7 @@ def swarmplot(data, label, ax):
         ax=ax
     )
 
-    ax.set_xlabel(label, size=15)
+    ax.set_xlabel(label, size=20)
     ax.set_xlim(-0.01, 1.01)
 
 

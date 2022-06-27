@@ -4,11 +4,11 @@
   },
   "targets": [
     {
-    "label": "Without topological loss",
+    "label": "Without $\\mathcal{L}_\\mathrm{T}$",
     "path": "../../data/publication_data/red_blood_cell/results_no_topo_adverserial_batchsize_3"
     },
     {
-      "label": "With topological loss",
+      "label": "With $\\mathcal{L}_\\mathrm{T}$",
       "path": "../../data/publication_data/red_blood_cell/results_topo_adv_dim2_bs3"
     }
   ],
