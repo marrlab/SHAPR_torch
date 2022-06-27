@@ -13,17 +13,17 @@ import json
 import os
 import trimesh
 
-from tqdm import tqdm
-
 import numpy as np
 import pandas as pd
+
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+from tqdm import tqdm
 
 from skimage import measure
 from skimage.filters import threshold_otsu
 from skimage.io import imread
-
-import matplotlib.pyplot as plt
-import seaborn as sns
 
 
 plt.rcParams.update({
@@ -184,7 +184,7 @@ def swarmplot(data, label, ax):
     ax = sns.swarmplot(
         data=data,
         color='.25',
-        size=1.5,
+        size=1.0,
         orient='h',
         ax=ax
     )
@@ -273,13 +273,13 @@ if __name__ == '__main__':
         swarmplot(
             make_df(data, 'surface_error'),
             'Rel. surface area error',
-            axes[2]
+            axes[2],
         )
 
         swarmplot(
             make_df(data, 'roughness_error'),
             'Rel. surface roughness error',
-            axes[3]
+            axes[3],
         )
 
     plt.tight_layout()
