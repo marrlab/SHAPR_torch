@@ -1,6 +1,6 @@
 # SHAPR
 <p align="center">
-<img src="shapr_logo.png"  width="200" />
+<img src="figures/SHAPR_logo.png"  width="200" />
 </p>
 
 Reconstructing the shapes of three dimensional (3D) objects from two
