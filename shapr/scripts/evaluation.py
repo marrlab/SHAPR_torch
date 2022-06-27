@@ -72,9 +72,9 @@ def norm_thres(data):
 
 def get_surface(obj):
     """Calculate surface area."""
-    k = np.ones((3,3,3), dtype=int)
+    k = np.ones((3, 3, 3), dtype=int)
     obj = obj.astype(int)
-    boundary = binary_dilation(obj==0, k) & obj
+    boundary = binary_dilation(obj == 0, k) & obj
     return np.sum(boundary)
 
 
@@ -249,7 +249,7 @@ if __name__ == '__main__':
         ncols=4 - 2 * args.quick,
         squeeze=True,
         sharey=True,
-        figsize=(10, 6)
+        figsize=(16, 6)
     )
 
     filenames = list(map(os.path.basename, filenames))

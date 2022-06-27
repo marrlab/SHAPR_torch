@@ -27,3 +27,8 @@ jupyter = "^1.0.0"
 trimesh = "^3.9.42"
 seaborn = "^0.11.2"
 pynrrd = "^0.4.3"
+nbformat = "^5.4.0"
+nbconvert = "^6.5.0"
+
+[tool.poetry.dev-dependencies]
+notebook = "^6.4.12"
