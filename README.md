@@ -3,6 +3,26 @@
 <img src="figures/SHAPR_logo.png"  width="200" />
 </p>
 
+## Citation
+
+If you use this code, please consider citing our paper:
+
+```bibtex
+@inproceedings{Waibel22a,
+  author        = {Dominik J. E. Waibel and Scott Atwell and Matthias Meier and Carsten Marr and Bastian Rieck},
+  title         = {Capturing Shape Information with Multi-Scale Topological Loss Terms for 3D Reconstruction},
+  year          = {2022},
+  booktitle     = {Medical Image Computing and Computer Assisted Intervention~(MICCAI)},
+  archiveprefix = {arXiv},
+  eprint        = {2203.01703},
+  primaryclass  = {cs.CV},
+  repository    = {https://github.com/marrlab/SHAPR_torch},
+  pubstate      = {inpress},
+}
+```
+
+## Introduction
+
 Reconstructing the shapes of three dimensional (3D) objects from two
 dimensional (2D) images is a task our brain constantly and unnoticeably
 performs. Recently neural networks have been proposed to solve the same
@@ -277,7 +297,3 @@ $ python -m scripts.calculate_persistence_diagrams ../docs/sample/obj/*.tif
 
 We are happy about any contributions. For any suggested changes, please
 send a pull request to the `develop` branch.
-
-## Citation
-
-If you use SHAPR, please cite this paper: https://www.biorxiv.org/content/10.1101/2021.09.29.462353v1
