@@ -34,10 +34,33 @@ For more information, please refer to our preprint on bioRxiv
 [here](https://www.biorxiv.org/content/10.1101/2021.09.29.462353v1).
 
 <p align="center">
-<img src="shapr_architecture.png"  width="600" />
+<img src="figures/SHAPR_architecture.png"  width="400" />
 </p>
-a, SHAPR consists of a 2D encoder, which embeds 2D images into a 128-dimensional latent space, and a 3D decoder, which reconstructs 3D shapes from the latent space representation. To train SHAPR we segment 3D microscopy images (we show an exemplary single red blood cell). We pair a 2D segmentation with the microscopy image of the same slice to enter the encoder as input. During supervised training (Fig. 1, step 1), we minimize the reconstruction loss (see Methods), which is the sum of the Dice loss and the binary cross entropy loss between the 3D segmentations y and SHAPR predictions p. For an input image of 64 x 64 pixels, we provide the pixel sizes for each layer in the gray boxes and the filter sizes on top of each box. b, In the second step, we fine-tune SHAPR by adding a discriminator. The discriminator is trained to differentiate between SHAPR output p ground truth segmentation r and minimize the adversarial loss. It thereby challenges SHAPR to output realistic 3D objects.
 
+SHAPR consists of a 2D encoder, which embeds 2D images into a
+latent space, and a 3D decoder, which reconstructs 3D shapes from the latent space representation.
+To train SHAPR we segment 3D microscopy images (we show an exemplary single red blood cell).
+We pair a 2D segmentation with the microscopy image of the same slice to enter the encoder as input.
+During supervised training (Fig. 1, step 1), we minimize the reconstruction loss (see Methods),
+which is the sum of the Dice loss and the binary cross entropy loss between the 3D segmentations and SHAPR predictions.
+For an input image of 64 x 64 pixels, we provide the pixel sizes for
+each layer in the gray boxes and the filter sizes on top of each box. In
+the second step, we fine-tune SHAPR by adding a discriminator. The
+discriminator is trained to differentiate between SHAPR output and
+ground truth segmentation and minimize the adversarial loss. It thereby
+challenges SHAPR to output realistic 3D objects.
+
+<p align="center">
+<img src="figures/SHAPR_topology.png"  width="400" />
+</p>
+
+Given a predicted object and a 3D ground truth object, we calculate
+topological features using (cubical) persistent homology, obtaining
+a set of persistence diagrams. Each point in a persistence diagram
+denotes the birth and death of a topological feature of some dimension of
+the given object. We compare these diagrams using $\mathcal{L}_T$, our
+topology-based loss, and weight this with existing loss terms like binary
+cross entropy (BCE) and Dice.
 
 ## Installation
 
