@@ -1,0 +1,16 @@
+{
+  "source": {
+    "path": "../../data/publication_data/nuclei/obj"
+  },
+  "targets": [
+    {
+    "label": "Without topological loss",
+    "path": "../../data/publication_data/nuclei/results_no_topo_adverserial_batchsize_3"
+    },
+    {
+      "label": "With topological loss",
+      "path": "../../data/publication_data/nuclei/results_topo_adv_dim2_bs3"
+    }
+  ],
+  "output": "/tmp/nuclei.svg"
+}
