@@ -9,26 +9,28 @@ This script requres a configuration file to work.
 
 import argparse
 import collections
+import copy
 import json
 import os
-import trimesh
-
-from tqdm import tqdm
 
 import numpy as np
 import pandas as pd
 
-from skimage import measure
-from skimage.filters import threshold_otsu
-from skimage.io import imread
-
 import matplotlib.pyplot as plt
 import seaborn as sns
+
+from tqdm import tqdm
+
+from scipy.ndimage import gaussian_filter
+from scipy.ndimage.morphology import binary_dilation
+
+from skimage.filters import threshold_otsu
+from skimage.io import imread
 
 
 plt.rcParams.update({
     'font.family': 'serif',
-    'text.usetex': False,
+    'text.usetex': True,
     'svg.fonttype': 'none',
 })
 
@@ -69,13 +71,11 @@ def norm_thres(data):
 
 
 def get_surface(obj):
-    """Calculate surface area using a mesh."""
-    verts_pred, faces_pred, _, _ = measure.marching_cubes(
-        obj * 255.,
-        method='lewiner'
-    )
-    surface_pred = measure.mesh_surface_area(verts_pred, faces_pred)
-    return surface_pred
+    """Calculate surface area."""
+    k = np.ones((3, 3, 3), dtype=int)
+    obj = obj.astype(int)
+    boundary = binary_dilation(obj == 0, k) & obj
+    return np.sum(boundary)
 
 
 def IoU(y_true, y_pred):
@@ -88,20 +88,10 @@ def IoU(y_true, y_pred):
 
 
 def get_roughness(obj):
-    """Calculate surface roughness using mesh."""
-    verts, faces, _, _ = measure.marching_cubes(
-        obj * 255.,
-        method='lewiner',
-    )
-    mesh = trimesh.Trimesh(vertices=verts, faces=faces, process=False)
-    smesh = trimesh.smoothing.filter_humphrey(mesh)
-
-    # Additional conversion requird since we are getting
-    # a `TrackedArray` that does not play nice with SNS.
-    roughness = np.mean(np.sqrt((np.sum((verts-smesh.vertices)**2))))
-    roughness = np.asarray(roughness)
-
-    return roughness
+    """Calculate surface roughness."""
+    smoothed_obj = copy.deepcopy(gaussian_filter(obj, 2))
+    smoothed_obj = smoothed_obj > 0.5
+    return np.sum(np.abs(smoothed_obj - obj))
 
 
 def evaluate(source, target, quick=False):
@@ -184,12 +174,12 @@ def swarmplot(data, label, ax):
     ax = sns.swarmplot(
         data=data,
         color='.25',
-        size=1.5,
+        size=1.0,
         orient='h',
         ax=ax
     )
 
-    ax.set_xlabel(label, size=15)
+    ax.set_xlabel(label, size=20)
     ax.set_xlim(-0.01, 1.01)
 
 
@@ -217,7 +207,9 @@ if __name__ == '__main__':
     processed = []
 
     for filename in tqdm(filenames, desc='File'):
-        source = imread(os.path.join(source_path, filename)) / 255.0
+        source = norm_thres(
+            imread(os.path.join(source_path, filename))
+        )
 
         # First check whether all files exist; else, we skip processing
         # in order to ensure consistent lists.
@@ -257,7 +249,7 @@ if __name__ == '__main__':
         ncols=4 - 2 * args.quick,
         squeeze=True,
         sharey=True,
-        figsize=(10, 3)
+        figsize=(16, 6)
     )
 
     filenames = list(map(os.path.basename, filenames))
@@ -273,13 +265,13 @@ if __name__ == '__main__':
         swarmplot(
             make_df(data, 'surface_error'),
             'Rel. surface area error',
-            axes[2]
+            axes[2],
         )
 
         swarmplot(
             make_df(data, 'roughness_error'),
             'Rel. surface roughness error',
-            axes[3]
+            axes[3],
         )
 
     plt.tight_layout()
