@@ -126,30 +126,6 @@ We need to manually add our virtual environment as a kernel to Jupyter Notebook:
 
 Now by opening the Jupyter-Notebook you have the option to select the `.venv_shapr` as the kernel.
 
-### Installation using `pip`
-
-You can also install SHAPR using:
-```console
-pip install shapr
-```
-
-For running the code, you need to have Python 3.6 or higher installed. In addition, these are the main dependencies:
-
-```yaml
-- cudatoolkit: 10.1.243 # in case of GPU existance
-- cudnn: 7.6.5 # in case of GPU existance
-- h5py: 2.10.0
-- hdf5: 1.10.6
-- imageio: 2.9.0
-- matplotlib: 3.3.4
-- numpy: 1.20.3
-- python: 3.6.7
-- scikit-image: 0.18.1
-- scikit-learn: 0.24.1
-- scipy: 1.6.2
-- pytorch
-```
-
 ## Running SHAPR
 
 Please find an example of how to run SHAPR from a jupyter notebook in
