@@ -3,6 +3,16 @@
 <img src="figures/SHAPR_logo.png"  width="200" />
 </p>
 
+
+For a short video introducing our topological loss function and SHAPR please see:
+
+<a href="https://www.youtube.com/watch?v=pCfRuTtyt1w">
+<p align="center">
+<img href="InstantDL" src="figures/youtube.png"
+width="500" align="center">
+</p>
+<a>
+
 ## Citation
 
 If you use this code, please consider citing our paper:
