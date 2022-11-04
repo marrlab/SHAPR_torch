@@ -157,8 +157,10 @@ def make_df(data, metric):
     for target in data:
         result[target] = data[target][metric]
 
+    df = pd.DataFrame.from_dict(result)
     print(df.mean())
-    return pd.DataFrame.from_dict(result)
+
+    return df
 
 
 def swarmplot(data, label, ax):
