@@ -157,6 +157,7 @@ def make_df(data, metric):
     for target in data:
         result[target] = data[target][metric]
 
+    print(df.mean())
     return pd.DataFrame.from_dict(result)
 
 
