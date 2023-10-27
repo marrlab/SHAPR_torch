@@ -97,7 +97,7 @@ cross entropy (BCE) and Dice.
 Fork the repository.
 
 ```console
-$ cd SHAPR
+$ cd SHAPR_torch
 $ pip3 install -e .
 ```
 
@@ -107,9 +107,9 @@ We would recommend to first set a virtual environment and then install the packa
 
 ```console
 $ cd SHAPR
-$ python3 -m venv .venv_shape
-$ source .venv_shape/bin/activate
-(.venv_shape) $ pip3 install -e .
+$ python3 -m venv .venv_shapr
+$ source .venv_shapr/bin/activate
+(.venv_shapr) $ pip3 install -e .
 ```
 
 By activating the virtual environment your shell’s prompt will be changed in order to show what virtual environment you’re using.
@@ -117,7 +117,7 @@ By activating the virtual environment your shell’s prompt will be changed in o
 You can deactivate a virtual environment by:
 
 ```console
-(.venv_shape) $ deactivate
+(.venv_shapr) $ deactivate
 ```
 
 We can also use the virtual environment as a kernel for Jupyter
@@ -125,13 +125,13 @@ Notebook. First you should install `ipykernel` package when the virtual
 environment is **activated**:
 
 ```console
-(.venv_shape) $ pip3 install ipykernel
+(.venv_shapr) $ pip3 install ipykernel
 ```
 
 We need to manually add our virtual environment as a kernel to Jupyter Notebook:
 
 ```console
-(.venv_shape) $ python -m ipykernel install --name=.venv_shapr
+(.venv_shapr) $ python -m ipykernel install --name=.venv_shapr
 ```
 
 Now by opening the Jupyter-Notebook you have the option to select the `.venv_shapr` as the kernel.
@@ -139,9 +139,9 @@ Now by opening the Jupyter-Notebook you have the option to select the `.venv_sha
 ## Running SHAPR
 
 Please find an example of how to run SHAPR from a jupyter notebook in
-`SHAPR/docs/jupyter notebook/Run SHAPR from notebook.ipynb`.
+`SHAPR_torch/docs/jupyter notebook/Run SHAPR from notebook.ipynb`.
 
-You can also run SHAPR using a params.json file, which is provided in `SHAPR/docs/sample/params.json`.
+You can also run SHAPR using a params.json file, which is provided in `SHAPR_torch/docs/sample/params.json`.
 
 ### Setting parameters
 
@@ -157,7 +157,7 @@ Setting parameters are:
 
 The setting parameters are read from the `settings` object. You may
 change the setting parameters by directly changing their default values
-in a `SHAPR/params.json` file or simply package API like:
+in a `SHAPR_torch/params.json` file or simply package API like:
 
 ```console
 > from shapr import settings
@@ -165,7 +165,7 @@ in a `SHAPR/params.json` file or simply package API like:
 ```
 
 We have added an example of a `params.json` file to `SHAPR/docs/sample/params.json`.
-If you want to use it, please adapt the paths to your project and copy the `params.json` to `SHAPR/params.json`, then execute `SHAPR/shapr/run_train_script.py`.
+If you want to use it, please adapt the paths to your project and copy the `params.json` to `SHAPR_torch/params.json`, then execute `SHAPR_torch/shapr/run_train_script.py`.
 You can also print all the parameters and their values using `print`:
 
 ```console

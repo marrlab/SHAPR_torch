@@ -14,7 +14,7 @@ setup(
     keywords='Computational Biology Deep Learning',
     packages=find_packages(exclude=['doc*', 'test*']),
     url='https://github.com/marrlab/SHAPR_torch/',
-    install_requires=['torch', 'imageio', 'scikit-image', 'scikit-learn', 'torch-topological'],
+    install_requires=['torch', 'imageio', 'scikit-image', 'scikit-learn', 'torch-topological', 'tensorflow', 'pytorch_lightning', 'torchvision'],
     classifiers=[
 	'Development Status :: 3 - Alpha',
 	'Topic :: Scientific/Engineering :: Image Recognition',
